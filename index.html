@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRIVANZA CONKAL · Simulador de Aportación v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<!--
+  PRIVANZA CONKAL — Simulador de Aportación al Fideicomiso
+  Grupo Ureca de México S.A. de C.V.
+  Versión 3.0
+
+  INSTRUCCIONES PARA GITHUB PAGES:
+  1. Sube este archivo a un repositorio de GitHub (p.ej. "privanza-sim")
+  2. Ve a Settings > Pages > Source: main branch, raíz (/)
+  3. Tu simulador estará en: https://TU-USUARIO.github.io/privanza-sim/
+  4. Para editar: abre el archivo en cualquier editor de texto (VS Code, Notepad++)
+  5. Los parámetros están en la sección "CONFIG" del JavaScript (~línea 600)
+  6. No se requiere servidor, base de datos ni instalación.
+-->
+
+<style>
+:root{
+  --ink:#0f1117;--paper:#f5f0e8;--gold:#c9a84c;--gold-light:#e8d5a3;
+  --rust:#8b3a2a;--sage:#3d5a4f;--sage-light:#5a7a6e;--muted:#7a7060;
+  --card:#faf7f1;--border:#d4cbb8;--positive:#2d6a4f;--negative:#8b3a2a;
+  --accent:#1a3a5c;--highlight:#c9a84c22;--warn:#b07a00;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Syne',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;font-size:14px;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+header{background:var(--ink);color:var(--paper);padding:14px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold);}
+.logo-main{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;letter-spacing:4px;color:var(--gold);text-transform:uppercase;}
+.logo-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;color:#8888aa;margin-top:2px;}
+.header-kpis{display:flex;gap:20px;}
+.hk{text-align:right;}
+.hk-val{font-family:'DM Mono',monospace;font-size:14px;color:var(--gold);font-weight:500;}
+.hk-lbl{font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;}
+
+/* Timeline strip */
+.timeline-strip{background:#181c26;border-bottom:1px solid #2a2a3a;padding:8px 28px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+.ts-item{display:flex;align-items:center;gap:8px;}
+.ts-dot{width:10px;height:10px;border-radius:50%;}
+.ts-label{font-family:'DM Mono',monospace;font-size:11px;color:#aaa;letter-spacing:1px;}
+.ts-val{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;}
+
+.nav-tabs{background:var(--ink);display:flex;padding:0 28px;border-bottom:1px solid #2a2a3a;flex-wrap:wrap;}
+.tab-btn{background:none;border:none;color:#666;padding:10px 14px;cursor:pointer;font-family:'Syne',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;border-bottom:2px solid transparent;transition:all .2s;position:relative;top:1px;}
+.tab-btn:hover{color:var(--paper);}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+.main{padding:20px 28px;max-width:1800px;margin:0 auto;position:relative;z-index:1;}
+.panel{display:none;animation:fadeIn .2s ease;}
+.panel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+.section-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;letter-spacing:2px;margin-bottom:3px;}
+.section-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:18px;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:16px 20px;}
+.card-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--border);}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+
+.kpi{background:var(--ink);color:var(--paper);padding:14px 16px;border-radius:2px;border-left:3px solid var(--gold);}
+.kpi.sage{border-left-color:var(--sage-light);background:var(--sage);}
+.kpi.rust{border-left-color:#e07060;background:var(--rust);}
+.kpi.blue{border-left-color:#5b8fd4;background:var(--accent);}
+.kpi.white{background:white;border:1px solid var(--border);border-left:3px solid var(--gold);}
+.kpi.warn{border-left-color:#e8a000;background:#4a3800;}
+.kv{font-family:'DM Mono',monospace;font-size:19px;font-weight:500;color:var(--gold);}
+.kpi.sage .kv{color:#a8d5c2;}.kpi.rust .kv{color:#f0a898;}.kpi.blue .kv{color:#8ab8f0;}.kpi.white .kv{color:var(--gold);}.kpi.warn .kv{color:#e8c060;}
+.kl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#aaa;margin-top:2px;}
+.kpi.white .kl,.kpi.sage .kl,.kpi.rust .kl,.kpi.blue .kl,.kpi.warn .kl{color:rgba(255,255,255,.6);}
+.ks{font-family:'DM Mono',monospace;font-size:10px;color:#888;margin-top:2px;}
+
+.ir{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.il{font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;min-width:185px;}
+input[type=range]{flex:1;accent-color:var(--gold);cursor:pointer;}
+input[type=number],select{background:white;border:1px solid var(--border);border-radius:2px;padding:5px 8px;font-family:'DM Mono',monospace;font-size:13px;color:var(--ink);}
+input[type=number]{width:110px;}
+select{width:auto;min-width:115px;cursor:pointer;}
+.vd{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--gold);min-width:75px;text-align:right;}
+input[type=checkbox]{accent-color:var(--gold);width:15px;height:15px;cursor:pointer;flex-shrink:0;}
+
+.tw{overflow-x:auto;border:1px solid var(--border);border-radius:2px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{background:var(--ink);color:var(--paper);}
+thead th{padding:8px 10px;text-align:left;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:400;white-space:nowrap;}
+thead th:first-child{color:var(--gold);}
+tbody tr{border-bottom:1px solid #ede8de;transition:background .1s;}
+tbody tr:hover{background:var(--highlight);}
+tbody tr:last-child{border-bottom:none;}
+tbody td{padding:6px 10px;font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap;}
+tfoot tr{background:#f0ebe0;border-top:2px solid var(--border);}
+tfoot td{padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;}
+.tl{font-weight:500;color:var(--accent);}.tpos{color:var(--positive);}.tneg{color:var(--negative);}
+.tgold{color:var(--gold);font-weight:500;}.tmut{color:var(--muted);}
+
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-family:'DM Mono',monospace;}
+.bg-g{background:#e8f5e9;color:#2e7d32;}.bg-a{background:#fff8e1;color:#f57f17;}
+.bg-r{background:#ffebee;color:#c62828;}.bg-b{background:#e3f2fd;color:#1565c0;}.bg-x{background:#f5f5f5;color:#616161;}
+
+.divider{height:1px;background:linear-gradient(to right,var(--gold),transparent);margin:14px 0;}
+
+.btn{background:var(--ink);color:var(--gold);border:1px solid var(--gold);padding:8px 18px;font-family:'Syne',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;border-radius:1px;}
+.btn:hover{background:var(--gold);color:var(--ink);}
+.btn.green{border-color:var(--sage-light);color:var(--sage-light);}
+.btn.green:hover{background:var(--sage);}
+
+.info{background:#fffbf0;border:1px solid var(--gold-light);border-left:3px solid var(--gold);padding:9px 13px;border-radius:2px;font-size:12px;color:var(--muted);line-height:1.65;}
+.info strong{color:var(--ink);}
+.note{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:5px;padding:5px 9px;background:#f8f4ec;border-radius:2px;border-left:2px solid var(--border);}
+.warn-box{background:#fff8e0;border:1px solid #e8c060;border-left:3px solid #e8a000;padding:9px 13px;border-radius:2px;font-size:12px;color:#6a4a00;line-height:1.65;}
+
+.flw{max-height:520px;overflow-y:auto;border:1px solid var(--border);}
+.prog-w{background:#e8e3d8;border-radius:1px;height:6px;overflow:hidden;margin-top:4px;}
+.prog{height:100%;border-radius:1px;transition:width .5s;}
+.p-gold{background:var(--gold);}.p-sage{background:var(--sage-light);}
+.p-rust{background:#e07060;}.p-blue{background:#5b8fd4;}.p-warn{background:#e8a000;}
+
+.dr{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+.dl{font-size:11px;color:var(--muted);min-width:70px;}
+.dp{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);min-width:36px;text-align:right;}
+.dlots{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);min-width:52px;text-align:right;}
+
+.mt4{margin-top:4px;}.mt8{margin-top:8px;}.mt12{margin-top:12px;}.mt16{margin-top:16px;}.mt20{margin-top:20px;}
+.mb8{margin-bottom:8px;}.mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}
+.flex{display:flex;}.ia{align-items:center;}.g8{gap:8px;}.fw{flex-wrap:wrap;}
+
+.pag-w{display:flex;gap:6px;justify-content:flex-end;margin-top:9px;align-items:center;}
+.pag-b{padding:4px 10px;background:white;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;border-radius:1px;}
+.pag-b:hover,.pag-b.active{background:var(--ink);color:white;border-color:var(--ink);}
+.pi{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+
+/* Proposal styles */
+.prop-banner{background:linear-gradient(135deg,var(--ink) 0%,#1a2640 100%);padding:28px 32px;border-radius:2px;border-left:4px solid var(--gold);margin-bottom:18px;}
+.prop-banner h1{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;letter-spacing:4px;color:var(--gold);margin-bottom:4px;}
+.prop-banner p{font-family:'DM Mono',monospace;font-size:11px;color:#aaa;letter-spacing:2px;}
+.pillar{background:white;border:1px solid var(--border);border-top:3px solid var(--gold);padding:16px;border-radius:1px;}
+.pillar-icon{font-size:24px;margin-bottom:7px;}
+.pillar-title{font-size:12px;font-weight:700;letter-spacing:1px;margin-bottom:6px;color:var(--accent);}
+.pillar-text{font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--muted);line-height:1.8;}
+
+/* Scenario cards for proposal */
+.esc-card{border:2px solid var(--border);border-radius:3px;overflow:hidden;}
+.esc-header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;}
+.esc-pessimist .esc-header{background:#3a1a1a;border-bottom:2px solid #e07060;}
+.esc-conserv .esc-header{background:#1a2640;border-bottom:2px solid var(--gold);}
+.esc-optimist .esc-header{background:#1a3a2a;border-bottom:2px solid var(--sage-light);}
+.esc-title{font-family:'Cormorant Garamond',serif;font-size:20px;letter-spacing:2px;color:white;}
+.esc-sub{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.6);margin-top:2px;}
+.esc-kpi{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;}
+.esc-body{padding:16px 18px;background:white;}
+
+/* Print button */
+.print-btn{background:var(--sage);color:white;border:none;padding:9px 18px;font-family:'Syne',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:1px;transition:all .2s;}
+.print-btn:hover{background:var(--sage-light);}
+
+@media print{
+  header,.nav-tabs,.btn,.print-btn,.no-print,.timeline-strip{display:none!important;}
+  .panel{display:none!important;}
+  #panel-proposal{display:block!important;}
+  .flw{max-height:none!important;}
+  body{background:white!important;}
+  body::before{display:none!important;}
+  .esc-chart-wrap{page-break-inside:avoid;}
+}
+.esc-chart-wrap{background:white;border:1px solid var(--border);border-radius:2px;padding:14px;margin-top:10px;}
+@media(max-width:1100px){.g4,.g5,.g6{grid-template-columns:1fr 1fr;}.g3{grid-template-columns:1fr 1fr;}}
+@media(max-width:700px){.g2,.g3,.g4,.g5,.g6{grid-template-columns:1fr;}.header-kpis{display:none;}.il{min-width:130px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo-main">Privanza · Conkal</div>
+    <div class="logo-sub">Simulador de Aportación v3 — Grupo Ureca de México</div>
+  </div>
+  <div class="header-kpis">
+    <div class="hk"><div class="hk-val">275</div><div class="hk-lbl">Lotes</div></div>
+    <div class="hk"><div class="hk-val">95,346 m²</div><div class="hk-lbl">Área privativa</div></div>
+    <div class="hk"><div class="hk-val">168,065 m²</div><div class="hk-lbl">Terreno total</div></div>
+  </div>
+</header>
+
+<!-- Timeline de fechas clave del proyecto -->
+<div class="timeline-strip" id="timeline-strip">
+  <div class="ts-item"><div class="ts-dot" style="background:#c9a84c"></div><span class="ts-label">Fin ventas:</span><span class="ts-val" style="color:#c9a84c" id="ts-ventas">—</span></div>
+  <div class="ts-item"><div class="ts-dot" style="background:#5b8fd4"></div><span class="ts-label">Fin proyecto:</span><span class="ts-val" style="color:#5b8fd4" id="ts-proyecto">—</span></div>
+  <div class="ts-item"><div class="ts-dot" style="background:#e07060"></div><span class="ts-label">Liquidación aportación:</span><span class="ts-val" style="color:#e07060" id="ts-aport">—</span></div>
+  <div class="ts-item"><div class="ts-dot" style="background:#5a7a6e"></div><span class="ts-label">Fin urbanización:</span><span class="ts-val" style="color:#5a7a6e" id="ts-urb">—</span></div>
+  <div class="ts-item" style="margin-left:auto;"><button class="btn" onclick="recalcAll()" style="padding:5px 14px;font-size:10px;">↻ Recalcular</button></div>
+</div>
+
+<div class="nav-tabs">
+  <button class="tab-btn active" onclick="showPanel('inventory',this)">① Inventario</button>
+  <button class="tab-btn" onclick="showPanel('pricing',this)">② Precios por Etapa</button>
+  <button class="tab-btn" onclick="showPanel('scenario',this)">③ Escenario de Ventas</button>
+  <button class="tab-btn" onclick="showPanel('cashflow',this)">④ Proyección de Flujos</button>
+  <button class="tab-btn" onclick="showPanel('aportacion',this)">⑤ Modelo de Aportación</button>
+  <button class="tab-btn" onclick="showPanel('costs',this)">⑥ Rentabilidad</button>
+  <button class="tab-btn" onclick="showPanel('proposal',this)">⑦ Propuesta</button>
+</div>
+
+<div class="main">
+
+<!-- ═══════ PANEL 1: INVENTARIO ═══════ -->
+<div id="panel-inventory" class="panel active">
+  <div class="section-title">Inventario de Lotes</div>
+  <div class="section-sub">275 LOTES · FRACCIONAMIENTO PRIVANZA · CONKAL, YUCATÁN</div>
+  <div class="g5 mb16" id="inv-kpis"></div>
+  <div class="card mb12"><div class="card-title">Distribución por tamaño</div><div id="lot-dist-bars"></div></div>
+  <input style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:2px;font-family:'DM Mono',monospace;font-size:13px;background:white;color:var(--ink);margin-bottom:9px;" type="text" id="lot-search" placeholder="Buscar lote por número..." oninput="filterLots()">
+  <div class="tw"><table><thead><tr><th>Lote #</th><th>Área Privativa (m²)</th><th>Área Común (m²)</th><th>Área Total (m²)</th><th>Indiviso %</th><th>Categoría</th></tr></thead><tbody id="lot-tbody"></tbody></table></div>
+  <div class="pag-w"><span class="pi" id="pag-info"></span><button class="pag-b" onclick="changePage(-1)">←</button><span id="pag-pages"></span><button class="pag-b" onclick="changePage(1)">→</button></div>
+</div>
+
+<!-- ═══════ PANEL 2: PRECIOS ═══════ -->
+<div id="panel-pricing" class="panel">
+  <div class="section-title">Precios por Etapa y Plazo</div>
+  <div class="section-sub">VALOR BASE · PLAZO BASE · DESCUENTOS POR PLAZO CORTO · MXN</div>
+  <div class="g2 mb12">
+    <div class="card">
+      <div class="card-title">Parámetros de precio</div>
+      <div class="ir"><span class="il">Precio base m² <span id="base-plazo-badge" style="color:var(--gold);font-size:10px;">(84m)</span></span><input type="range" min="0" max="6000" step="50" id="price-base" value="1800" oninput="updatePricing()"><span class="vd" id="price-base-val">$1,800</span></div>
+      <div class="ir"><span class="il">Plazo base (precio más alto)</span><select id="base-plazo" onchange="rebuildDiscounts();updatePricing()"><option value="contado">Contado</option><option value="12">12 meses</option><option value="24">24 meses</option><option value="36">36 meses</option><option value="48">48 meses</option><option value="60">60 meses</option><option value="72">72 meses</option><option value="84" selected>84 meses</option></select></div>
+      <div class="ir"><span class="il">Incremento entre etapas</span><input type="range" min="5" max="30" step="1" id="price-inc" value="15" oninput="updatePricing()"><span class="vd" id="price-inc-val">15%</span></div>
+      <div class="info mt8"><strong>Lógica:</strong> El plazo base tiene el precio más alto (sin descuento). Plazos más cortos reciben descuento porque el cliente paga antes. Si seleccionas 84m como base, contado es el más barato.</div>
+      <div class="divider"></div>
+      <div class="card-title">Descuentos por plazo corto (sobre precio base)</div>
+      <div id="discount-inputs"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tabla $/m² por plazo y etapa</div>
+      <div class="tw"><table><thead><tr><th>Plazo</th><th>Desc.</th><th>Etapa 1</th><th>Etapa 2</th><th>Etapa 3</th><th>Etapa 4</th></tr></thead><tbody id="price-tbody"></tbody></table></div>
+      <div class="divider"></div>
+      <div class="card-title">Valor total del proyecto si se vendiera TODO al precio base</div>
+      <div class="info mb8"><strong>¿Qué es esto?</strong> Es el techo teórico de ingresos: si cada lote se vendiera al precio base (sin descuento). En la práctica el ingreso real será menor por la mezcla de plazos. Sirve como referencia máxima.</div>
+      <div id="etapa-totals" class="g2 mt8"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Precios por lote — mensualidades con cada tipo de enganche</div>
+    <div class="flex ia g8 fw mb12">
+      <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Etapa:</span>
+      <select id="etapa-sel" onchange="updateLotPriceTable()"><option value="1">Etapa 1</option><option value="2">Etapa 2</option><option value="3">Etapa 3</option><option value="4">Etapa 4</option></select>
+      <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-left:10px;">Plazo:</span>
+      <select id="plazo-sel" onchange="updateLotPriceTable()"><option value="contado">Contado</option><option value="12">12m</option><option value="24">24m</option><option value="36">36m</option><option value="48">48m</option><option value="60">60m</option><option value="72">72m</option><option value="84" selected>84m</option></select>
+    </div>
+    <div class="tw" style="max-height:360px;overflow-y:auto;"><table>
+      <thead><tr><th>Lote</th><th>Área (m²)</th><th>$/m²</th><th>Precio Total</th><th>Eng. 15%</th><th>Mensual./15%</th><th>Eng. 20%</th><th>Mensual./20%</th></tr></thead>
+      <tbody id="lot-price-tbody"></tbody>
+    </table></div>
+    <div class="note mt8">Mensualidad = (Precio − Enganche) ÷ meses del plazo. Contado no genera mensualidades.</div>
+  </div>
+</div>
+
+<!-- ═══════ PANEL 3: ESCENARIO ═══════ -->
+<div id="panel-scenario" class="panel">
+  <div class="section-title">Escenario de Ventas</div>
+  <div class="section-sub">VELOCIDAD · MIX DE PLAZOS · ENGANCHES · DIFERIMIENTOS</div>
+  <div class="g2">
+    <div>
+      <div class="card mb12">
+        <div class="card-title">Velocidad de ventas</div>
+        <div class="ir"><span class="il">Lotes vendidos por mes</span><input type="range" min="1" max="20" step="1" id="lots-month" value="6" oninput="updateScenario()"><span class="vd" id="lots-month-val">6</span></div>
+        <div class="ir"><span class="il">Meses para terminar urbanización</span><input type="range" min="6" max="96" step="6" id="urb-months" value="36" oninput="updateScenario()"><span class="vd" id="urb-months-val">36m</span></div>
+        <div class="note mt4">Con 6 lotes/mes: fin de ventas en ~mes 46. Último cliente paga hasta que terminen sus mensualidades.</div>
+      </div>
+      <div class="card mb12">
+        <div class="card-title">Distribución de plazos de crédito</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:7px;">Total debe sumar 100% · se muestra el nº aproximado de lotes</div>
+        <div id="plazo-dist"></div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:5px;">Total: <span id="dist-total" style="color:var(--gold)">100%</span></div>
+      </div>
+      <div class="card mb12">
+        <div class="card-title">Distribución de enganches</div>
+        <div class="dr"><span class="dl">15% enganche</span><input type="range" min="0" max="100" id="eng-15" value="75" oninput="syncEng()" style="flex:1;accent-color:var(--rust)"><span class="dp" id="pct-eng-15" style="color:#e07060">75%</span><span class="dlots" id="lots-eng-15"></span></div>
+        <div class="dr"><span class="dl">20% enganche</span><input type="range" min="0" max="100" id="eng-20" value="25" style="flex:1;accent-color:var(--sage-light);pointer-events:none;opacity:.6"><span class="dp" id="pct-eng-20" style="color:var(--sage-light)">25%</span><span class="dlots" id="lots-eng-20"></span></div>
+        <div class="note mt4">El enganche 20% es complemento del 15% (suman 100%).</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Diferimiento del enganche</div>
+        <div class="ir"><span class="il">% ventas con enganche diferido</span><input type="range" min="0" max="100" step="5" id="diff-pct" value="0" oninput="updateScenario()"><span class="vd" id="diff-pct-val">0%</span></div>
+        <div class="ir"><span class="il">Nº de pagos del enganche</span><select id="diff-pagos" onchange="updateScenario()"><option value="1">1 pago (sin diferir)</option><option value="2">2 pagos (bimensual)</option><option value="3">3 pagos (trimestral)</option></select></div>
+        <div class="ir"><span class="il">Mensualidades inician</span><select id="diff-inicio" onchange="updateScenario()"><option value="ultimo">Después del último pago de enganche</option><option value="segundo">Desde el 2º pago de enganche</option></select></div>
+        <div class="info mt8"><strong>Ejemplo (3 pagos, opción "desde 2º pago"):</strong> Mes 0 → eng/3; Mes 1 → eng/3 + 1ª mensualidad; Mes 2 → eng/3 + 2ª mensualidad; Mes 3 en adelante → solo mensualidades.</div>
+      </div>
+    </div>
+    <div>
+      <div class="card mb12">
+        <div class="card-title">Opciones del modelo</div>
+        <div class="ir mb8"><input type="checkbox" id="opt-5pct" checked onchange="updateScenario()"><span style="font-size:12px;margin-left:6px;">El 5% adicional del enganche 20% adelanta a pago de aportación</span></div>
+        <div class="note">Si no está activado, ese 5% extra queda disponible para operación.</div>
+      </div>
+      <div class="card mb12">
+        <div class="card-title">Resumen del escenario</div>
+        <div id="scenario-summary"></div>
+        <div class="info mt8"><strong>Valor nominal vs flujo real:</strong> El "valor nominal de contratos" es la suma de todos los precios firmados. El "total ingresos" en la pestaña de Flujos es el efectivo que entra mes a mes (enganches + mensualidades cobradas). Son distintos: uno es el derecho contractual total, el otro es la caja real en el tiempo.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Línea de tiempo por etapa</div>
+        <div id="scenario-timeline"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PANEL 4: FLUJOS ═══════ -->
+<div id="panel-cashflow" class="panel">
+  <div class="section-title">Proyección de Flujos</div>
+  <div class="section-sub">FLUJO MENSUAL COMPLETO · COMISIONES SOBRE ENGANCHE · TODOS LOS EGRESOS</div>
+
+  <div class="warn-box mb12">
+    <strong>⚙ Lógica de comisiones:</strong> Las comisiones de venta se descuentan <em>primero</em> del enganche cobrado ese mes. Si el enganche no alcanza para cubrir el total de comisiones, el faltante se toma de las mensualidades de ese mismo mes. Los demás gastos (obra, admvo., etc.) se aplican sobre el flujo total restante.
+  </div>
+
+  <div class="g4 mb12" id="cf-kpis"></div>
+
+  <div class="card mb12">
+    <div class="card-title">Configuración: aportación y egresos operativos</div>
+    <div class="g2">
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Aportación al fideicomiso</div>
+        <div class="ir"><span class="il">% mensualidades → aportación</span><input type="range" min="5" max="40" step="1" id="aport-pct" value="20" oninput="updateCashflow()"><span class="vd" id="aport-pct-val">20%</span></div>
+        <div class="ir"><span class="il">Monto total acordado (MXN)</span><input type="number" id="aport-total" value="15000000" step="500000" onchange="updateCashflow()" style="width:150px;"></div>
+        <div id="cf-aport-mini" class="mt8"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Egresos (% sobre flujo bruto del mes)</div>
+        <div class="ir"><span class="il">Comisiones de venta</span><input type="range" min="0" max="20" step="0.5" id="cf-com" value="7" oninput="updateCashflow()"><span class="vd" id="cf-com-v">7%</span></div>
+        <div class="ir"><span class="il">Obra / urbanización</span><input type="range" min="0" max="40" step="0.5" id="cf-urb" value="22" oninput="updateCashflow()"><span class="vd" id="cf-urb-v">22%</span></div>
+        <div class="ir"><span class="il">Administrativo</span><input type="range" min="0" max="15" step="0.5" id="cf-adm" value="4" oninput="updateCashflow()"><span class="vd" id="cf-adm-v">4%</span></div>
+        <div class="ir"><span class="il">Publicidad y marketing</span><input type="range" min="0" max="15" step="0.5" id="cf-pub" value="3" oninput="updateCashflow()"><span class="vd" id="cf-pub-v">3%</span></div>
+        <div class="ir"><span class="il">Legal y trámites</span><input type="range" min="0" max="10" step="0.5" id="cf-leg" value="2" oninput="updateCashflow()"><span class="vd" id="cf-leg-v">2%</span></div>
+        <div class="ir"><span class="il">Retenciones IVA/ISR</span><input type="range" min="0" max="20" step="0.5" id="cf-tax" value="12" oninput="updateCashflow()"><span class="vd" id="cf-tax-v">12%</span></div>
+        <div class="ir"><span class="il">Costos financieros</span><input type="range" min="0" max="5" step="0.5" id="cf-fin" value="1.5" oninput="updateCashflow()"><span class="vd" id="cf-fin-v">1.5%</span></div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:6px;">Total egresos operativos: <span id="cf-egr-total" style="color:var(--gold)">51.5%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:white;border:1px solid var(--border);border-radius:2px;padding:12px;margin-bottom:12px;">
+    <canvas id="cf-chart" height="220"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tabla de flujo mensual — Período completo del proyecto</div>
+    <div class="flw">
+      <table>
+        <thead><tr>
+          <th>Mes</th><th>Lotes</th>
+          <th>Eng.15%</th><th>Eng.20%</th><th>+5%Aport</th><th>Mensuals.</th><th>Ingreso Bruto</th>
+          <th>Comis.</th><th>Saldo s/Com.</th>
+          <th>→Aport.</th><th>Acum.Aport.</th>
+          <th>Obra</th><th>Admvo.</th><th>Publicidad</th><th>Legal</th><th>IVA/ISR</th><th>Financ.</th>
+          <th>Tot.Egresos</th><th style="color:#8ab8f0;">Flujo Neto</th>
+        </tr></thead>
+        <tbody id="cf-tbody"></tbody>
+        <tfoot id="cf-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PANEL 5: APORTACIÓN ═══════ -->
+<div id="panel-aportacion" class="panel">
+  <div class="section-title">Modelo de Aportación al Fideicomiso</div>
+  <div class="section-sub">VALORACIÓN · ESTRUCTURA FINANCIERA · ANÁLISIS DE PAYOFF</div>
+  <div class="g2 mb12">
+    <div class="card">
+      <div class="card-title">Valoración del terreno aportado</div>
+      <div class="ir"><span class="il">Valor comercial m² terreno</span><input type="range" min="0" max="2000" step="25" id="land-val" value="600" oninput="updateAportacion()"><span class="vd" id="land-val-v">$600</span></div>
+      <div class="ir"><span class="il">% urbanización avanzada</span><input type="range" min="0" max="50" step="1" id="urb-pct" value="15" oninput="updateAportacion()"><span class="vd" id="urb-pct-v">15%</span></div>
+      <div class="ir"><span class="il">Inversión estimada en obra (MXN)</span><input type="number" id="urb-inv" value="3500000" step="100000" onchange="updateAportacion()" style="width:145px;"></div>
+      <div class="divider"></div>
+      <div id="aport-val-summary"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Costos del Fideicomiso (gastos del proyecto, no del monto acordado)</div>
+      <div class="info mb12">Los costos fiduciarios son <strong>gastos operativos del proyecto</strong>, pagados por Grupo Ureca. Son independientes del monto acordado con el propietario del terreno.</div>
+      <div class="ir"><span class="il">Costo anual fiduciaria</span><input type="number" id="trust-cost" value="120000" step="10000" onchange="updateAportacion()" style="width:125px;"><span style="font-size:11px;color:var(--muted);margin-left:7px;">MXN/año</span></div>
+      <div class="ir"><span class="il">Escrituración por lote</span><input type="number" id="escritura-cost" value="8000" step="500" onchange="updateAportacion()" style="width:125px;"><span style="font-size:11px;color:var(--muted);margin-left:7px;">MXN/lote</span></div>
+      <div class="divider"></div>
+      <div class="card-title">Monto acordado por la aportación</div>
+      <div class="ir"><span class="il">Monto total acordado</span><input type="number" id="aport-agreed" value="15000000" step="500000" onchange="updateAportacion()" style="width:145px;"><span style="font-size:11px;color:var(--muted);margin-left:7px;">MXN</span></div>
+      <div class="ir"><span class="il">Plazo máximo deseado</span><input type="range" min="12" max="96" step="6" id="aport-plazo-max" value="48" oninput="updateAportacion()"><span class="vd" id="aport-plazo-max-v">48m</span></div>
+      <div id="aport-fidei-summary" class="mt8"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">¿En qué mes se liquida según el % de mensualidades destinado?</div>
+    <div id="aport-payoff-grid" class="g6 mt8 mb12"></div>
+    <div class="tw"><table><thead><tr><th>% Mensualidades</th><th>Mes de liquidación</th><th>Tiempo</th><th>Total pagado</th><th>Flujo restante/mes</th><th>Evaluación</th></tr></thead><tbody id="aport-payoff-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ═══════ PANEL 6: RENTABILIDAD ═══════ -->
+<div id="panel-costs" class="panel">
+  <div class="section-title">Rentabilidad del Proyecto</div>
+  <div class="section-sub">COSTOS TOTALES · ESTADO DE RESULTADOS · MARGEN</div>
+  <div class="g3 mb12" id="cost-kpis"></div>
+  <div class="g2 mb12">
+    <div class="card">
+      <div class="card-title">Estructura de costos (% sobre ingresos totales del proyecto)</div>
+      <div class="note mb8">Todos los parámetros inician desde 0%. Estos % representan el total acumulado del proyecto.</div>
+      <div class="ir"><span class="il">Urbanización (obra)</span><input type="range" min="0" max="40" step="0.5" id="c-urb" value="22" oninput="updateCosts()"><span class="vd" id="cv-urb">22%</span></div>
+      <div class="ir"><span class="il">Comisiones de venta</span><input type="range" min="0" max="20" step="0.5" id="c-com" value="7" oninput="updateCosts()"><span class="vd" id="cv-com">7%</span></div>
+      <div class="ir"><span class="il">Administrativos</span><input type="range" min="0" max="15" step="0.5" id="c-adm" value="4" oninput="updateCosts()"><span class="vd" id="cv-adm">4%</span></div>
+      <div class="ir"><span class="il">Publicidad y marketing</span><input type="range" min="0" max="15" step="0.5" id="c-pub" value="3" oninput="updateCosts()"><span class="vd" id="cv-pub">3%</span></div>
+      <div class="ir"><span class="il">Legal y gestiones</span><input type="range" min="0" max="10" step="0.5" id="c-leg" value="2" oninput="updateCosts()"><span class="vd" id="cv-leg">2%</span></div>
+      <div class="ir"><span class="il">Retenciones IVA/ISR</span><input type="range" min="0" max="20" step="0.5" id="c-tax" value="12" oninput="updateCosts()"><span class="vd" id="cv-tax">12%</span></div>
+      <div class="ir"><span class="il">Costos financieros</span><input type="range" min="0" max="5" step="0.5" id="c-fin" value="1.5" oninput="updateCosts()"><span class="vd" id="cv-fin">1.5%</span></div>
+      <div class="ir"><span class="il">Fideicomiso</span><input type="range" min="0" max="3" step="0.1" id="c-fid" value="0.8" oninput="updateCosts()"><span class="vd" id="cv-fid">0.8%</span></div>
+      <div class="divider"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);">Total costos: <span id="total-cost-pct" style="color:var(--gold);font-weight:500">52.3%</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Estado de resultados — Total · % · Promedio mensual</div>
+      <div id="income-statement"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Flujo de costos por partida — período completo</div>
+    <div style="background:white;border:1px solid var(--border);padding:12px;margin-top:8px;"><canvas id="cost-chart" height="200"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══════ PANEL 7: PROPUESTA ═══════ -->
+<div id="panel-proposal" class="panel">
+
+  <!-- ── CONFIGURACIÓN INTERNA (no se imprime) ── -->
+  <div class="card mb16 no-print" style="border-left:3px solid var(--gold);">
+    <div class="card-title">⚙ Configuración de escenarios — solo visible para Grupo Ureca</div>
+    <div class="note mb12">Define aquí los 3 ritmos de venta. El resto de parámetros (precios, plazos, enganches, % aportación) se toman del escenario general configurado en las demás pestañas.</div>
+    <div class="g3" style="gap:16px;">
+      <!-- Pesimista -->
+      <div style="background:#fff8f8;border:1px solid #e8b8b8;border-top:3px solid #e07060;padding:14px;border-radius:2px;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:17px;color:#8b3a2a;margin-bottom:10px;letter-spacing:1px;">📉 Escenario Pesimista</div>
+        <div class="ir"><span class="il" style="min-width:140px;">Lotes por mes</span>
+          <input type="range" min="1" max="20" step="1" id="esc-pess-lpm" value="3" oninput="onEscChange()" style="flex:1;accent-color:#e07060;">
+          <span class="vd" id="esc-pess-lpm-v" style="color:#e07060;">3</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px;" id="esc-pess-info">275 lotes → ~92 meses de ventas</div>
+      </div>
+      <!-- Conservador -->
+      <div style="background:#fffdf0;border:1px solid #e8d888;border-top:3px solid var(--gold);padding:14px;border-radius:2px;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:17px;color:#7a6000;margin-bottom:10px;letter-spacing:1px;">📊 Escenario Conservador</div>
+        <div class="ir"><span class="il" style="min-width:140px;">Lotes por mes</span>
+          <input type="range" min="1" max="20" step="1" id="esc-cons-lpm" value="6" oninput="onEscChange()" style="flex:1;accent-color:var(--gold);">
+          <span class="vd" id="esc-cons-lpm-v" style="color:var(--gold);">6</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px;" id="esc-cons-info">275 lotes → ~46 meses de ventas</div>
+      </div>
+      <!-- Optimista -->
+      <div style="background:#f0fff6;border:1px solid #88d8a8;border-top:3px solid var(--sage-light);padding:14px;border-radius:2px;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:17px;color:#2d5a3f;margin-bottom:10px;letter-spacing:1px;">📈 Escenario Optimista</div>
+        <div class="ir"><span class="il" style="min-width:140px;">Lotes por mes</span>
+          <input type="range" min="1" max="20" step="1" id="esc-opt-lpm" value="10" oninput="onEscChange()" style="flex:1;accent-color:var(--sage-light);">
+          <span class="vd" id="esc-opt-lpm-v" style="color:var(--sage-light);">10</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px;" id="esc-opt-info">275 lotes → ~28 meses de ventas</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="flex ia g8 fw">
+      <button class="btn" onclick="exportHTML()" style="font-size:10px;padding:7px 14px;background:var(--sage);border-color:var(--sage-light);color:white;">⬇ Exportar HTML con parámetros actuales</button>
+      <button class="btn" onclick="exportWord()" style="font-size:10px;padding:7px 14px;background:var(--accent);border-color:#5b8fd4;color:white;" id="btn-word">📄 Exportar Propuesta Word</button>
+      <button class="print-btn" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+      <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;" id="save-status"></span>
+    </div>
+    <div class="note mt8">
+      <strong>⬇ Exportar HTML:</strong> graba todos los parámetros actuales en el archivo para que arranque igual la próxima vez. &nbsp;|&nbsp;
+      <strong>📄 Exportar Word:</strong> genera la propuesta completa con los 3 escenarios, tablas de flujo y contenido formateado, lista para compartir.
+    </div>
+  </div>
+
+  <!-- ── PROPUESTA IMPRIMIBLE ── -->
+  <div class="prop-banner">
+    <h1>PRIVANZA CONKAL</h1>
+    <p>PROPUESTA DE APORTACIÓN DE TERRENO AL FIDEICOMISO INMOBILIARIO · GRUPO URECA DE MÉXICO · CONKAL, YUCATÁN</p>
+  </div>
+
+  <div class="card mb12">
+    <div class="card-title">El Proyecto — Fraccionamiento Privanza Conkal</div>
+    <div class="g4">
+      <div class="kpi white"><div class="kv">275</div><div class="kl">Lotes en régimen de condominio</div></div>
+      <div class="kpi white"><div class="kv">168,065 m²</div><div class="kl">Superficie total del predio</div></div>
+      <div class="kpi white"><div class="kv">95,346 m²</div><div class="kl">Área privativa vendible</div></div>
+      <div class="kpi white"><div class="kv">15%</div><div class="kl">Urbanización ya ejecutada</div></div>
+    </div>
+    <div class="info mt12">El fraccionamiento ya cuenta con avance de obra: barda perimetral, acceso principal, tramo de calles internas y áreas verdes. Los trámites catastrales están completados. <strong>El proyecto puede iniciar preventa de manera inmediata.</strong></div>
+  </div>
+
+  <div class="g3 mb12">
+    <div class="pillar"><div class="pillar-icon">🏛️</div><div class="pillar-title">SEGURIDAD JURÍDICA TOTAL</div><div class="pillar-text">El terreno se aporta a un Fideicomiso Inmobiliario con institución fiduciaria regulada. El patrimonio es inembargable y completamente separado del de Grupo Ureca. Sus derechos como beneficiario son contractualmente garantizados.</div></div>
+    <div class="pillar"><div class="pillar-icon">💰</div><div class="pillar-title">INGRESOS MENSUALES GARANTIZADOS</div><div class="pillar-text">Recibirá un porcentaje mensual de los ingresos del proyecto, dispersado automáticamente desde la cuenta del fideicomiso hasta alcanzar el monto total acordado. Proceso transparente, auditado y sin aprobaciones discrecionales.</div></div>
+    <div class="pillar"><div class="pillar-icon">⚡</div><div class="pillar-title">SIN INVERSIÓN ADICIONAL</div><div class="pillar-text">Usted aporta el terreno y la urbanización ya ejecutada. Grupo Ureca asume obra, comercialización, trámites y administración. Cero gastos operativos para el propietario durante toda la vida del proyecto.</div></div>
+  </div>
+
+  <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;letter-spacing:2px;margin-bottom:4px;margin-top:8px;">Proyección de Ingresos — Tres Escenarios</div>
+  <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:14px;">PESIMISTA · CONSERVADOR · OPTIMISTA · FLUJO MENSUAL PARA EL APORTANTE</div>
+
+  <div id="proposal-scenarios" style="display:flex;flex-direction:column;gap:28px;margin-bottom:20px;"></div>
+
+  <!-- Garantías -->
+  <div class="g2 mb12">
+    <div class="card">
+      <div class="card-title">Garantías del fideicomiso para el propietario</div>
+      <table style="width:100%;font-size:13px;font-family:'Cormorant Garamond',serif;line-height:1.7;">
+        <tr><td style="padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top;">🔒</td><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><strong>Patrimonio separado:</strong> El terreno ingresa como patrimonio autónomo del fideicomiso. No puede ser afectado, embargado ni comprometido por obligaciones de Grupo Ureca.</td></tr>
+        <tr><td style="padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top;">📊</td><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><strong>Reportes mensuales certificados:</strong> El fiduciario emite estados de cuenta con el detalle de cada venta, enganche y mensualidad, verificables por el beneficiario en tiempo real.</td></tr>
+        <tr><td style="padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top;">💳</td><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><strong>Dispersión automática:</strong> El porcentaje acordado se transfiere mes a mes sin aprobación discrecional, directamente desde la cuenta fideicomisaria al beneficiario.</td></tr>
+        <tr><td style="padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top;">📋</td><td style="padding:7px 10px;border-bottom:1px solid var(--border);"><strong>Plazo máximo comprometido:</strong> El contrato establece el monto total a pagar y el plazo máximo de liquidación, con cláusulas de cumplimiento obligatorio.</td></tr>
+        <tr><td style="padding:7px 10px;vertical-align:top;">⚖️</td><td style="padding:7px 10px;"><strong>Arbitraje comercial:</strong> Mecanismo de resolución de controversias con árbitro neutral de la industria, establecido contractualmente desde el inicio.</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Lo que aporta cada parte</div>
+      <table style="width:100%;font-size:12px;">
+        <thead><tr><th style="padding:7px;background:var(--ink);color:var(--gold);">Propietario del Terreno</th><th style="padding:7px;background:var(--sage);color:#a8d5c2;">Grupo Ureca de México</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Terreno (168,065 m²)</td><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Obra civil y urbanización</td></tr>
+          <tr><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Inversión en urbanización</td><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Maquinaria pesada propia</td></tr>
+          <tr><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Trámites catastrales</td><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Fuerza de ventas activa</td></tr>
+          <tr><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Permisos y gestiones</td><td style="padding:6px 9px;border-bottom:1px solid var(--border);">✅ Oficinas: Mérida · Querétaro · CDMX</td></tr>
+          <tr><td style="padding:6px 9px;">❌ Sin capital operativo</td><td style="padding:6px 9px;">✅ Gestión legal y fiduciaria</td></tr>
+        </tbody>
+      </table>
+      <div class="divider"></div>
+      <div class="card-title">Infraestructura de Grupo Ureca</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:14px;line-height:1.9;color:var(--muted);">
+        🚜 Maquinaria pesada propia en Yucatán — sin subcontratación de equipo<br>
+        🏢 Red de oficinas: Mérida, Querétaro, próximamente CDMX<br>
+        📊 CRM y plataformas de gestión operando en proyectos activos<br>
+        🏖️ Posibilidad de club de playa exclusivo para compradores de Privanza
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Resumen ejecutivo</div>
+    <div id="proposal-summary"></div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ════════════════════════════════════════════════════════════════
+// DATOS: 275 lotes [loteNum, area_privativa, indiviso, area_comun]
+// ════════════════════════════════════════════════════════════════
+const LOTS=[[1,619.72,0.649968,472.65],[2,376.42,0.394793,287.09],[3,345.38,0.362238,263.41],[4,322.27,0.338,245.79],[5,306.57,0.321534,233.82],[6,300.4,0.315062,229.11],[7,300.39,0.315052,229.1],[8,300,0.314643,228.8],[9,300,0.314643,228.8],[10,300,0.314643,228.8],[11,300,0.314643,228.8],[12,300,0.314643,228.8],[13,300,0.314643,228.8],[14,300,0.314643,228.8],[15,300,0.314643,228.8],[16,300,0.314643,228.8],[17,300,0.314643,228.8],[18,300,0.314643,228.8],[19,300,0.314643,228.8],[20,300,0.314643,228.8],[21,300,0.314643,228.8],[22,300,0.314643,228.8],[23,300,0.314643,228.8],[24,300,0.314643,228.8],[25,300,0.314643,228.8],[26,300,0.314643,228.8],[27,300,0.314643,228.8],[28,300,0.314643,228.8],[29,300,0.314643,228.8],[30,300,0.314643,228.8],[31,300,0.314643,228.8],[32,300,0.314643,228.8],[33,300,0.314643,228.8],[34,300,0.314643,228.8],[35,300,0.314643,228.8],[36,300,0.314643,228.8],[37,300,0.314643,228.8],[38,301.77,0.316499,230.15],[39,309.16,0.32425,235.79],[40,322.73,0.338482,246.14],[41,331.05,0.347208,252.49],[42,340.31,0.35692,259.55],[43,348.53,0.365542,265.82],[44,355.73,0.373093,271.31],[45,361.9,0.379564,276.01],[46,367.04,0.384955,279.93],[47,371.3,0.389423,283.18],[48,374.27,0.392538,285.45],[49,375.95,0.3943,286.73],[50,376.57,0.39495,287.2],[51,376.36,0.39473,287.04],[52,375.29,0.393608,286.23],[53,373.38,0.391605,284.77],[54,370.62,0.38871,282.66],[55,367.02,0.384934,279.92],[56,357.31,0.37475,272.51],[57,338.04,0.35454,257.82],[58,317.44,0.332934,242.11],[59,304.47,0.319331,232.21],[60,300.28,0.314937,229.02],[61,300,0.314643,228.8],[62,300,0.314643,228.8],[63,300,0.314643,228.8],[64,300,0.314643,228.8],[65,300,0.314643,228.8],[66,300,0.314643,228.8],[67,300,0.314643,228.8],[68,300,0.314643,228.8],[69,300,0.314643,228.8],[70,300,0.314643,228.8],[71,300,0.314643,228.8],[72,300,0.314643,228.8],[73,300,0.314643,228.8],[74,300,0.314643,228.8],[75,300,0.314643,228.8],[76,300,0.314643,228.8],[77,300,0.314643,228.8],[78,300,0.314643,228.8],[79,300,0.314643,228.8],[80,300,0.314643,228.8],[81,300,0.314643,228.8],[82,300,0.314643,228.8],[83,300,0.314643,228.8],[84,300,0.314643,228.8],[85,300,0.314643,228.8],[86,300,0.314643,228.8],[87,300,0.314643,228.8],[88,300,0.314643,228.8],[89,300,0.314643,228.8],[90,300,0.314643,228.8],[91,300,0.314643,228.8],[92,300,0.314643,228.8],[93,300,0.314643,228.8],[94,300,0.314643,228.8],[95,300,0.314643,228.8],[96,300,0.314643,228.8],[97,300,0.314643,228.8],[98,300,0.314643,228.8],[99,300,0.314643,228.8],[100,300,0.314643,228.8],[101,300,0.314643,228.8],[102,300,0.314643,228.8],[103,300,0.314643,228.8],[104,300,0.314643,228.8],[105,300,0.314643,228.8],[106,300,0.314643,228.8],[107,300,0.314643,228.8],[108,300,0.314643,228.8],[109,300,0.314643,228.8],[110,300,0.314643,228.8],[111,300,0.314643,228.8],[112,300,0.314643,228.8],[113,300,0.314643,228.8],[114,300,0.314643,228.8],[115,300,0.314643,228.8],[116,300,0.314643,228.8],[117,300,0.314643,228.8],[118,300,0.314643,228.8],[119,300,0.314643,228.8],[120,300,0.314643,228.8],[121,300,0.314643,228.8],[122,569.64,0.597444,434.45],[123,2180.93,2.287381,1663.35],[124,406.57,0.426415,310.08],[125,299.3,0.313909,228.27],[126,300,0.314643,228.8],[127,300,0.314643,228.8],[128,300,0.314643,228.8],[129,300,0.314643,228.8],[130,300,0.314643,228.8],[131,300,0.314643,228.8],[132,300,0.314643,228.8],[133,300,0.314643,228.8],[134,493.86,0.517965,376.66],[135,657.24,0.68932,501.26],[136,394.85,0.414123,301.14],[137,377.16,0.395569,287.65],[138,359.47,0.377016,274.16],[139,337.18,0.353638,257.16],[140,388.47,0.407431,296.28],[141,426.26,0.447066,325.1],[142,373.88,0.392129,285.15],[143,337.76,0.354246,257.6],[144,371.67,0.389811,283.47],[145,406.77,0.426624,310.24],[146,358.38,0.375872,273.33],[147,351.06,0.368195,267.75],[148,336.41,0.35283,256.57],[149,296.95,0.311444,226.48],[150,285.47,0.299404,217.72],[151,337.84,0.35433,257.66],[152,358.33,0.37582,273.29],[153,339.94,0.356532,259.27],[154,340.22,0.356826,259.48],[155,334.73,0.351068,255.29],[156,331.99,0.348194,253.2],[157,331.99,0.348194,253.2],[158,334.73,0.351068,255.29],[159,339.37,0.355935,258.83],[160,303.56,0.318377,231.52],[161,288.68,0.30277,220.17],[162,270.14,0.283325,206.03],[163,272.41,0.285706,207.76],[164,333.93,0.350229,254.68],[165,350.21,0.367304,267.1],[166,363.53,0.381274,277.26],[167,556.96,0.584145,424.78],[168,543.93,0.570479,414.85],[169,522.25,0.547741,398.31],[170,491.52,0.515511,374.87],[171,450.97,0.472982,343.95],[172,414.74,0.434983,316.31],[173,391.58,0.410693,298.65],[174,383.13,0.401831,292.21],[175,380.46,0.39903,290.17],[176,389.83,0.408858,297.32],[177,410.49,0.430526,313.07],[178,439.82,0.461288,335.44],[179,610.63,0.640435,465.72],[180,300,0.314643,228.8],[181,300,0.314643,228.8],[182,300,0.314643,228.8],[183,405,0.424768,308.89],[184,430.67,0.451691,328.46],[185,468.66,0.491535,357.44],[186,451.53,0.473569,344.37],[187,374.44,0.392716,285.58],[188,572.25,0.600181,436.44],[189,485.6,0.509302,370.36],[190,335.84,0.352232,256.14],[191,300,0.314643,228.8],[192,300,0.314643,228.8],[193,357.62,0.375075,272.75],[194,357.62,0.375075,272.75],[195,357.62,0.375075,272.75],[196,357.62,0.375075,272.75],[197,357.02,0.374446,272.29],[198,345.25,0.362102,263.32],[199,300,0.314643,228.8],[200,300,0.314643,228.8],[201,323.02,0.338787,246.36],[202,468.75,0.49163,357.51],[203,472.39,0.495447,360.28],[204,354.49,0.371793,270.36],[205,300,0.314643,228.8],[206,348.66,0.365678,265.92],[207,327.14,0.343108,249.5],[208,312.31,0.327554,238.19],[209,303.99,0.318828,231.85],[210,302.08,0.316824,230.39],[211,304.81,0.319688,232.47],[212,300,0.314643,228.8],[213,345.73,0.362605,263.68],[214,446.61,0.468409,340.62],[215,401.41,0.421003,306.15],[216,265.42,0.278375,202.43],[217,300,0.314643,228.8],[218,300,0.314643,228.8],[219,269.38,0.282528,205.45],[220,296.11,0.310563,225.84],[221,327.53,0.343517,249.8],[222,350.59,0.367702,267.39],[223,357.48,0.374929,272.64],[224,357.62,0.375075,272.75],[225,300,0.314643,228.8],[226,298.64,0.313217,227.77],[227,253.61,0.265989,193.42],[228,384.88,0.403666,293.54],[229,339.14,0.355693,258.66],[230,253.61,0.265989,193.42],[231,298.65,0.313227,227.77],[232,300,0.314643,228.8],[233,357.62,0.375075,272.75],[234,357.62,0.375075,272.75],[235,357.62,0.375075,272.75],[236,357.62,0.375075,272.75],[237,357.62,0.375075,272.75],[238,357.62,0.375075,272.75],[239,300,0.314643,228.8],[240,291.23,0.305445,222.12],[241,247.02,0.259077,188.4],[242,326.08,0.341996,248.7],[243,335.61,0.351991,255.96],[244,295.96,0.310406,225.72],[245,300,0.314643,228.8],[246,300,0.314643,228.8],[247,320,0.335619,244.06],[248,320,0.335619,244.06],[249,320,0.335619,244.06],[250,320,0.335619,244.06],[251,320,0.335619,244.06],[252,320,0.335619,244.06],[253,300,0.314643,228.8],[254,294.73,0.309116,224.79],[255,248.85,0.260996,189.79],[256,361.37,0.379008,275.61],[257,417.3,0.437668,318.27],[258,329.66,0.345751,251.43],[259,300,0.314643,228.8],[260,357.62,0.375075,272.75],[261,357.62,0.375075,272.75],[262,357.62,0.375075,272.75],[263,357.62,0.375075,272.75],[264,357.62,0.375075,272.75],[265,357.62,0.375075,272.75],[266,304.41,0.319268,232.17],[267,308.12,0.323159,235.0],[268,409.42,0.429404,312.26],[269,742.67,0.77892,566.42],[270,483.28,0.506869,368.59],[271,508.6,0.533425,387.9],[272,357.62,0.375075,272.75],[273,357.62,0.375075,272.75],[274,369.37,0.387399,281.71],[275,810.16,0.849704,617.89]];
+
+const TOTAL_LOTS=LOTS.length;
+const TOTAL_AREA=LOTS.reduce((s,l)=>s+l[1],0);
+const AREA_TOTAL=168064.91;
+const PLAZOS=['contado','12','24','36','48','60','72','84'];
+const PLAZO_M={contado:0,'12':12,'24':24,'36':36,'48':48,'60':60,'72':72,'84':84};
+const PLAZO_L={contado:'Contado','12':'12m','24':'24m','36':'36m','48':'48m','60':'60m','72':'72m','84':'84m'};
+
+// ─── helpers ─────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const fmt=(n,d=0)=>n==null?'—':n.toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtM=n=>'$'+fmt(n);
+const fmtMM=n=>Math.abs(n)>=1e6?(n<0?'-':'')+'$'+fmt(Math.abs(n)/1e6,2)+'M':fmtM(n);
+const getLotEtapa=num=>num<=69?1:num<=170?2:num<=230?3:4;
+
+function showPanel(name,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $('panel-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='cashflow') updateCashflow();
+  if(name==='costs') updateCosts();
+  if(name==='aportacion') updateAportacion();
+  if(name==='proposal') updateProposal();
+}
+
+function recalcAll(){
+  updateCashflow();
+  updateCosts();
+}
+
+// ─── PRICING ─────────────────────────────────────────────────────
+function getBasePlazo(){return $('base-plazo').value;}
+
+function getDisc(p){
+  if(p===getBasePlazo()) return 0;
+  const el=$('disc-'+p);
+  return el?+el.value/100:0;
+}
+
+function getPriceM2(plazo,etapa){
+  const base=+$('price-base').value;
+  const inc=+$('price-inc').value/100;
+  return base*Math.pow(1+inc,etapa-1)*(1-getDisc(plazo));
+}
+
+function getLotPrice(area,plazo,etapa){return area*getPriceM2(plazo,etapa);}
+
+const DISC_DEFAULTS={contado:30,'12':25,'24':20,'36':15,'48':10,'60':5,'72':2,'84':0};
+
+function rebuildDiscounts(){
+  const base=getBasePlazo();
+  const baseM=PLAZO_M[base];
+  let html='';
+  PLAZOS.forEach(p=>{
+    const pm=PLAZO_M[p];
+    if(p===base){
+      html+=`<div class="ir"><span class="il" style="color:var(--gold);">${PLAZO_L[p]} ← PRECIO BASE</span><span style="flex:1;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);">Este es el precio sin descuento</span><span class="vd" style="color:var(--muted);">0%</span></div>`;
+    } else {
+      const isShorter=pm<baseM;
+      const label=isShorter?'Descuento':'Sobrecargo';
+      const def=DISC_DEFAULTS[p]||5;
+      const existing=$('disc-'+p);
+      const val=existing?existing.value:def;
+      html+=`<div class="ir"><span class="il">${PLAZO_L[p]} (${label})</span><input type="range" min="0" max="60" step="1" id="disc-${p}" value="${val}" oninput="updatePricing()"><span class="vd" id="disc-${p}-v">${val}%</span></div>`;
+    }
+  });
+  $('discount-inputs').innerHTML=html;
+  $('base-plazo-badge').textContent='('+PLAZO_L[base]+')';
+}
+
+function updatePricing(){
+  $('price-base-val').textContent='$'+fmt(+$('price-base').value);
+  $('price-inc-val').textContent=$('price-inc').value+'%';
+  PLAZOS.forEach(p=>{
+    const el=$('disc-'+p+'-v');
+    const inp=$('disc-'+p);
+    if(el&&inp){
+      const isShorter=PLAZO_M[p]<PLAZO_M[getBasePlazo()];
+      el.textContent=(isShorter?'-':'+')+inp.value+'%';
+      el.style.color=isShorter?'var(--positive)':'#e07060';
+    }
+  });
+  const base=getBasePlazo();
+  $('price-tbody').innerHTML=PLAZOS.map(p=>{
+    const isB=p===base;
+    const d=getDisc(p);
+    const shorter=PLAZO_M[p]<PLAZO_M[base];
+    return`<tr style="${isB?'background:var(--highlight);':''}">
+      <td><span class="badge ${isB?'bg-a':'bg-b'}">${PLAZO_L[p]}${isB?' ★':''}</span></td>
+      <td class="${d>0&&shorter?'tpos':d>0?'tneg':'tmut'}">${isB?'BASE':(shorter?'-':'+')+Math.abs(d*100).toFixed(0)+'%'}</td>
+      ${[1,2,3,4].map(e=>`<td class="tgold">$${fmt(getPriceM2(p,e),0)}</td>`).join('')}
+    </tr>`;
+  }).join('');
+  $('etapa-totals').innerHTML=[1,2,3,4].map(e=>{
+    const cls=['e1','e2','e3','e4'][e-1];
+    const tot=LOTS.reduce((s,l)=>s+getLotPrice(l[1],base,e),0);
+    return`<div class="kpi white"><div style="margin-bottom:4px;"><span style="display:inline-block;padding:2px 7px;font-size:10px;font-weight:600;border-radius:1px;" class="${cls}">ETAPA ${e}</span></div>
+      <div class="kv">${fmtMM(tot)}</div>
+      <div class="ks">$${fmt(getPriceM2(base,e),0)}/m² base</div></div>`;
+  }).join('');
+  updateLotPriceTable();
+}
+
+function updateLotPriceTable(){
+  const e=+$('etapa-sel').value,p=$('plazo-sel').value,m=PLAZO_M[p],pm=getPriceM2(p,e);
+  $('lot-price-tbody').innerHTML=LOTS.map(l=>{
+    const price=l[1]*pm;
+    const e15=price*.15,e20=price*.20;
+    const ms15=m>0?(price-e15)/m:0,ms20=m>0?(price-e20)/m:0;
+    return`<tr><td class="tl">#${l[0]}</td><td>${fmt(l[1],1)}</td><td class="tmut">$${fmt(pm,0)}</td><td class="tgold">$${fmt(price,0)}</td><td>$${fmt(e15,0)}</td><td class="tmut">${m>0?'$'+fmt(ms15,0):'—'}</td><td>$${fmt(e20,0)}</td><td class="tmut">${m>0?'$'+fmt(ms20,0):'—'}</td></tr>`;
+  }).join('');
+}
+
+// ─── INVENTORY ───────────────────────────────────────────────────
+let filteredLots=[...LOTS],currentPage=1;
+const PS=30;
+
+function lotCat(a){
+  if(a<280)return{lbl:'Compacto',cls:'bg-x'};
+  if(a<320)return{lbl:'Estándar',cls:'bg-b'};
+  if(a<400)return{lbl:'Amplio',cls:'bg-g'};
+  if(a<600)return{lbl:'Premium',cls:'bg-a'};
+  return{lbl:'Grande',cls:'bg-r'};
+}
+
+function initInventory(){
+  const areas=LOTS.map(l=>l[1]),avg=areas.reduce((a,b)=>a+b)/areas.length;
+  $('inv-kpis').innerHTML=`
+    <div class="kpi"><div class="kv">${TOTAL_LOTS}</div><div class="kl">Lotes totales</div></div>
+    <div class="kpi sage"><div class="kv">${fmt(TOTAL_AREA,0)} m²</div><div class="kl">Área privativa total</div></div>
+    <div class="kpi blue"><div class="kv">${fmt(avg,0)} m²</div><div class="kl">Área promedio</div></div>
+    <div class="kpi"><div class="kv">${fmt(Math.min(...areas),0)}–${fmt(Math.max(...areas),0)}</div><div class="kl">Rango m²</div></div>
+    <div class="kpi rust"><div class="kv">${fmt(AREA_TOTAL-TOTAL_AREA,0)} m²</div><div class="kl">Área común</div></div>`;
+  const ranges=[{l:'<280m²',mn:0,mx:280},{l:'280–320',mn:280,mx:320},{l:'320–400',mn:320,mx:400},{l:'400–600',mn:400,mx:600},{l:'>600m²',mn:600,mx:9999}];
+  $('lot-dist-bars').innerHTML=ranges.map(r=>{
+    const cnt=LOTS.filter(l=>l[1]>=r.mn&&l[1]<r.mx).length,pct=cnt/TOTAL_LOTS*100;
+    return`<div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);min-width:62px;">${r.l}</span>
+      <div style="flex:1;background:#e8e3d8;height:16px;border-radius:1px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:var(--gold);display:flex;align-items:center;padding-left:5px;"><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink);">${cnt}</span></div></div>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);min-width:35px;text-align:right;">${pct.toFixed(1)}%</span>
+    </div>`;
+  }).join('');
+  renderLotTable();
+}
+
+function filterLots(){filteredLots=LOTS.filter(l=>!$('lot-search').value||l[0].toString().includes($('lot-search').value));currentPage=1;renderLotTable();}
+function renderLotTable(){
+  const st=(currentPage-1)*PS;
+  $('lot-tbody').innerHTML=filteredLots.slice(st,st+PS).map(l=>{const c=lotCat(l[1]);return`<tr><td class="tl">#${l[0]}</td><td>${fmt(l[1],2)}</td><td class="tmut">${fmt(l[3],2)}</td><td>${fmt(l[1]+l[3],2)}</td><td class="tmut">${l[2].toFixed(4)}%</td><td><span class="badge ${c.cls}">${c.lbl}</span></td></tr>`;}).join('');
+  const tp=Math.ceil(filteredLots.length/PS);
+  $('pag-info').textContent=filteredLots.length+' lotes';
+  let ph='';for(let i=1;i<=Math.min(tp,8);i++) ph+=`<button class="pag-b${i===currentPage?' active':''}" onclick="currentPage=${i};renderLotTable()">${i}</button>`;
+  $('pag-pages').innerHTML=ph;
+}
+function changePage(d){const tp=Math.ceil(filteredLots.length/PS);currentPage=Math.max(1,Math.min(tp,currentPage+d));renderLotTable();}
+
+// ─── SCENARIO ────────────────────────────────────────────────────
+function initScenario(){
+  const defs={contado:5,'12':5,'24':5,'36':10,'48':15,'60':20,'72':20,'84':20};
+  $('plazo-dist').innerHTML=PLAZOS.map(p=>`
+    <div class="dr"><span class="dl">${PLAZO_L[p]}</span>
+    <input type="range" min="0" max="100" id="d-${p}" value="${defs[p]}" oninput="syncDist()" style="flex:1;accent-color:var(--gold)">
+    <span class="dp" id="pct-${p}">${defs[p]}%</span><span class="dlots" id="dlots-${p}"></span></div>`).join('');
+}
+
+function syncDist(){
+  const vals=PLAZOS.map(p=>+$(`d-${p}`).value);
+  const total=vals.reduce((a,b)=>a+b,0);
+  PLAZOS.forEach((p,i)=>{
+    $(`pct-${p}`).textContent=vals[i]+'%';
+    $(`dlots-${p}`).textContent='≈'+Math.round(TOTAL_LOTS*vals[i]/Math.max(total,1))+' lotes';
+  });
+  $('dist-total').textContent=total+'%';
+  $('dist-total').style.color=total===100?'var(--positive)':'var(--negative)';
+  updateScenario();
+}
+
+function syncEng(){
+  const v=+$('eng-15').value;
+  $('eng-20').value=100-v;
+  $('pct-eng-15').textContent=v+'%';
+  $('pct-eng-20').textContent=(100-v)+'%';
+  $('lots-eng-15').textContent='≈'+Math.round(TOTAL_LOTS*v/100)+' lotes';
+  $('lots-eng-20').textContent='≈'+Math.round(TOTAL_LOTS*(100-v)/100)+' lotes';
+  updateScenario();
+}
+
+function getDist(){
+  const vals=PLAZOS.map(p=>+$(`d-${p}`).value);
+  const total=vals.reduce((a,b)=>a+b,0);
+  if(!total) return{'84':1};
+  const d={};PLAZOS.forEach((p,i)=>d[p]=vals[i]/total);return d;
+}
+
+function updateScenario(){
+  const lpm=+$('lots-month').value,urbM=+$('urb-months').value;
+  $('lots-month-val').textContent=lpm;
+  $('urb-months-val').textContent=urbM+'m';
+  $('diff-pct-val').textContent=$('diff-pct').value+'%';
+  const totalMonths=Math.ceil(TOTAL_LOTS/lpm);
+  const dist=getDist();
+  let wavg=0;Object.entries(dist).forEach(([p,w])=>wavg+=PLAZO_M[p]*w);
+  let wPrice=0;Object.entries(dist).forEach(([p,w])=>{const ap=[1,2,3,4].map(e=>getPriceM2(p,e)).reduce((a,b)=>a+b)/4;wPrice+=ap*w;});
+  const totalNominal=LOTS.reduce((s,l)=>{const e=getLotEtapa(l[0]);let b=0;Object.entries(dist).forEach(([p,w])=>b+=getLotPrice(l[1],p,e)*w);return s+b;},0);
+  $('scenario-summary').innerHTML=`
+    <div class="g2" style="gap:10px;">
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Duración de ventas</div><div style="font-family:'DM Mono',monospace;font-size:20px;color:var(--gold);">${totalMonths} meses</div><div style="font-size:11px;color:var(--muted);">${(totalMonths/12).toFixed(1)} años · hasta cerrar lote 275</div></div>
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Valor nominal contratos</div><div style="font-family:'DM Mono',monospace;font-size:20px;color:var(--positive);">${fmtMM(totalNominal)}</div><div style="font-size:11px;color:var(--muted);">Suma de precios firmados</div></div>
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Plazo promedio ponderado</div><div style="font-family:'DM Mono',monospace;font-size:20px;color:var(--accent);">${wavg.toFixed(0)} meses</div></div>
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">$/m² promedio ponderado</div><div style="font-family:'DM Mono',monospace;font-size:20px;color:var(--gold);">$${fmt(wPrice,0)}</div><div style="font-size:11px;color:var(--muted);">Precio efectivo del proyecto</div></div>
+    </div>`;
+  const etapaCnt=[69,101,60,45];let acum=0;
+  $('scenario-timeline').innerHTML=etapaCnt.map((cnt,i)=>{
+    const s=Math.ceil(acum/lpm)+1,e=Math.ceil((acum+cnt)/lpm);acum+=cnt;
+    return`<div style="margin-bottom:9px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:var(--accent);">Etapa ${i+1}</span><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">Mes ${s}–${e} · ${cnt} lotes</span></div><div class="prog-w"><div class="prog p-gold" style="width:${cnt/TOTAL_LOTS*100}%"></div></div></div>`;
+  }).join('');
+  updateTimeline();
+}
+
+// ─── CASHFLOW ENGINE ─────────────────────────────────────────────
+// Comisiones: se descuentan PRIMERO del enganche. Si no alcanza, el resto de la mensualidad
+function buildCashflow(overrideLPM=null){
+  const lpm=overrideLPM||+$('lots-month').value;
+  const dist=getDist();
+  const eng15pct=+$('eng-15').value/100;
+  const eng20pct=1-eng15pct;
+  const aportPct=+$('aport-pct').value/100;
+  const aportTotal=+$('aport-total').value;
+  const opt5=$('opt-5pct').checked;
+  const diffPct=+$('diff-pct').value/100;
+  const diffPagos=+$('diff-pagos').value;
+  const diffInicio=$('diff-inicio').value;
+  const comRate=+$('cf-com').value/100;
+  const urbRate=+$('cf-urb').value/100;
+  const admRate=+$('cf-adm').value/100;
+  const pubRate=+$('cf-pub').value/100;
+  const legRate=+$('cf-leg').value/100;
+  const taxRate=+$('cf-tax').value/100;
+  const finRate=+$('cf-fin').value/100;
+  const urbMonths=+$('urb-months').value;
+
+  // Pre-assign lots
+  const assigns=LOTS.map((lot,i)=>{
+    let plazo='84',cum=0;
+    const r=(i*7+13)%100/100;
+    for(const[p,w] of Object.entries(dist)){cum+=w;if(r<cum){plazo=p;break;}}
+    const is20=i%4===0;
+    const etapa=getLotEtapa(lot[0]);
+    const price=getLotPrice(lot[1],plazo,etapa);
+    const isDiff=i/TOTAL_LOTS<diffPct;
+    return{lot,plazo,is20,etapa,price,isDiff,idx:i};
+  });
+
+  // Build enganche and credit schedules
+  const engSched=[]; // {month, engAmt, extra5, comBase}
+  const credSched=[]; // {startMonth, endMonth, monthly}
+  let lastSaleMonth=0;
+
+  assigns.forEach((a,i)=>{
+    const saleM=Math.floor(i/lpm)+1;
+    if(saleM>lastSaleMonth) lastSaleMonth=saleM;
+    const{price,is20,plazo,isDiff}=a;
+    const engPct=is20?.20:.15;
+    const eng=price*engPct;
+    const extra5=is20?price*.05:0;
+    const credM=PLAZO_M[plazo];
+    const saldo=price*(1-engPct);
+    const comAmt=price*comRate; // commission per sale
+
+    if(!isDiff||diffPagos===1){
+      engSched.push({month:saleM,engAmt:eng,extra5,comAmt});
+      if(credM>0) credSched.push({startMonth:saleM+1,endMonth:saleM+credM,monthly:saldo/credM,comResidual:0});
+    } else {
+      const perPago=eng/diffPagos;
+      for(let pp=0;pp<diffPagos;pp++) engSched.push({month:saleM+pp,engAmt:perPago,extra5:pp===0?extra5:0,comAmt:pp===0?comAmt:0});
+      const mensStart=diffInicio==='segundo'&&diffPagos>=2?saleM+1:saleM+diffPagos;
+      if(credM>0) credSched.push({startMonth:mensStart,endMonth:mensStart+credM-1,monthly:saldo/credM,comResidual:0});
+    }
+  });
+
+  const lastCreditMonth=credSched.length?Math.max(...credSched.map(c=>c.endMonth)):lastSaleMonth;
+  const maxMonth=Math.max(lastCreditMonth, urbMonths)+2;
+
+  const rows=[];
+  let acumAport=0,aportPayoffMonth=null,comCarryover=0;
+
+  for(let m=1;m<=maxMonth;m++){
+    const engInMonth=engSched.filter(e=>e.month===m);
+    let eng15=0,eng20=0,extra5=0,comFromEng=0;
+    engInMonth.forEach(e=>{
+      if(e.extra5>0){eng20+=e.engAmt;}else{eng15+=e.engAmt;}
+      extra5+=e.extra5;
+      comFromEng+=e.comAmt;
+    });
+    let mensualidades=0;
+    credSched.forEach(c=>{if(m>=c.startMonth&&m<=c.endMonth)mensualidades+=c.monthly;});
+
+    const totalEng=eng15+eng20;
+    const grossIngreso=totalEng+mensualidades;
+
+    // Comisiones: first from enganche, then from mensualidades if needed
+    const totalCom=comFromEng+comCarryover;
+    comCarryover=0;
+    let comFromEngActual=Math.min(totalCom,totalEng);
+    let comFromMens=0;
+    if(totalCom>totalEng){
+      comFromMens=Math.min(totalCom-totalEng,mensualidades);
+      comCarryover=totalCom-totalEng-comFromMens; // carry to next month if still not covered
+    }
+    const totalComPaid=comFromEngActual+comFromMens;
+
+    const saldoTrasComisiones=grossIngreso-totalComPaid;
+
+    // Aportación: % de mensualidades + opcionalmente el 5% extra
+    let aportMonth=mensualidades*aportPct+(opt5?extra5:0);
+    if(!aportPayoffMonth){
+      const rem=aportTotal-acumAport;
+      if(aportMonth>=rem){aportMonth=rem;aportPayoffMonth=m;}
+      acumAport+=aportMonth;
+    } else {
+      aportMonth=0;
+    }
+
+    // Egresos operativos sobre el saldo tras comisiones y aportación
+    const base=saldoTrasComisiones-aportMonth;
+    const costs={
+      urb:grossIngreso*urbRate,
+      adm:grossIngreso*admRate,
+      pub:grossIngreso*pubRate,
+      leg:grossIngreso*legRate,
+      tax:grossIngreso*taxRate,
+      fin:grossIngreso*finRate
+    };
+    const totalOtherCosts=Object.values(costs).reduce((a,b)=>a+b,0);
+    const totalEgresos=totalComPaid+aportMonth+totalOtherCosts;
+    const flujoNeto=grossIngreso+(opt5?extra5:0)-totalEgresos;
+    const lotsThisMonth=assigns.filter((_,i)=>Math.floor(i/lpm)+1===m).length;
+
+    rows.push({m,lotsThisMonth,eng15,eng20,extra5,mensualidades,grossIngreso,
+      comPaid:totalComPaid,saldoTrasComisiones,
+      aportMonth,acumAport,
+      costsUrb:costs.urb,costsAdm:costs.adm,costsPub:costs.pub,
+      costsLeg:costs.leg,costsTax:costs.tax,costsFin:costs.fin,
+      totalEgresos,flujoNeto});
+  }
+
+  return{rows,aportPayoffMonth,aportTotal,lastSaleMonth,lastCreditMonth,urbMonths,maxMonth};
+}
+
+// Update the sticky timeline strip
+function updateTimeline(){
+  try{
+    const{aportPayoffMonth,lastSaleMonth,lastCreditMonth,urbMonths}=buildCashflow();
+    $('ts-ventas').textContent=`Mes ${lastSaleMonth} (${(lastSaleMonth/12).toFixed(1)}a)`;
+    $('ts-proyecto').textContent=`Mes ${lastCreditMonth} (${(lastCreditMonth/12).toFixed(1)}a)`;
+    $('ts-aport').textContent=aportPayoffMonth?`Mes ${aportPayoffMonth} (${(aportPayoffMonth/12).toFixed(1)}a)`:'— (ajustar %)';
+    $('ts-urb').textContent=`Mes ${urbMonths} (${(urbMonths/12).toFixed(1)}a)`;
+  }catch(e){}
+}
+
+let cfChart=null,costChart=null;
+
+function updateCashflow(){
+  ['com','urb','adm','pub','leg','tax','fin'].forEach(id=>{
+    $(`cf-${id}-v`).textContent=$(`cf-${id}`).value+'%';
+  });
+  const total=['com','urb','adm','pub','leg','tax','fin'].reduce((s,id)=>s+(+$(`cf-${id}`).value),0);
+  $('cf-egr-total').textContent=total.toFixed(1)+'%';
+  $('aport-pct-val').textContent=$('aport-pct').value+'%';
+
+  const{rows,aportPayoffMonth,aportTotal,lastSaleMonth,lastCreditMonth}=buildCashflow();
+  updateTimeline();
+
+  const totalIng=rows.reduce((s,r)=>s+r.grossIngreso,0);
+  const totalAport=rows.reduce((s,r)=>s+r.aportMonth,0);
+  const totalNeto=rows.reduce((s,r)=>s+r.flujoNeto,0);
+  const peakR=rows.reduce((a,b)=>b.grossIngreso>a.grossIngreso?b:a);
+
+  $('cf-kpis').innerHTML=`
+    <div class="kpi"><div class="kv">${fmtMM(totalIng)}</div><div class="kl">Total ingresos cobrados</div><div class="ks">Efectivo real recibido mes a mes</div></div>
+    <div class="kpi sage"><div class="kv">${fmtMM(totalAport)}</div><div class="kl">Total pagado por aportación</div></div>
+    <div class="kpi blue"><div class="kv">${aportPayoffMonth?'Mes '+aportPayoffMonth:'> período'}</div><div class="kl">Liquidación aportación</div></div>
+    <div class="kpi rust"><div class="kv">${fmtMM(totalNeto)}</div><div class="kl">Flujo neto acumulado</div><div class="ks">Todos egresos descontados</div></div>`;
+
+  const paidPct=Math.min((rows[rows.length-1]?.acumAport||0)/aportTotal*100,100);
+  $('cf-aport-mini').innerHTML=`
+    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Avance pago de aportación</div>
+    <div style="font-family:'DM Mono',monospace;font-size:22px;color:var(--gold);">${paidPct.toFixed(1)}%</div>
+    <div class="prog-w" style="height:9px;margin-top:4px;"><div class="prog p-gold" style="width:${paidPct}%"></div></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtMM(Math.min(rows[rows.length-1]?.acumAport||0,aportTotal))} de ${fmtMM(aportTotal)}</div>
+    ${aportPayoffMonth?`<div style="font-size:11px;color:var(--positive);font-family:'DM Mono',monospace;margin-top:3px;">✓ Liquidado mes ${aportPayoffMonth} (${(aportPayoffMonth/12).toFixed(1)}a)</div>`:'<div style="color:var(--negative);font-size:11px;margin-top:3px;">No se liquida en período actual</div>'}`;
+
+  // Chart
+  const cr=rows.slice(0,Math.min(84,rows.length));
+  if(cfChart) cfChart.destroy();
+  cfChart=new Chart($('cf-chart').getContext('2d'),{
+    type:'bar',
+    data:{labels:cr.map(r=>'M'+r.m),datasets:[
+      {label:'Enganches',data:cr.map(r=>r.eng15+r.eng20),backgroundColor:'#c9a84c88',borderColor:'#c9a84c',borderWidth:1},
+      {label:'Mensualidades',data:cr.map(r=>r.mensualidades),backgroundColor:'#3d5a4f88',borderColor:'#3d5a4f',borderWidth:1},
+      {label:'→ Aportación',data:cr.map(r=>r.aportMonth),type:'line',backgroundColor:'transparent',borderColor:'#e07060',borderWidth:2,fill:false,tension:.3},
+      {label:'Flujo Neto',data:cr.map(r=>r.flujoNeto),type:'line',backgroundColor:'transparent',borderColor:'#5b8fd4',borderWidth:2,fill:false,tension:.3,borderDash:[4,2]}
+    ]},
+    options:{responsive:true,plugins:{legend:{position:'top',labels:{color:'#333',font:{family:'Syne',size:11}}}},
+      scales:{x:{stacked:true,ticks:{color:'#888',font:{family:'DM Mono',size:10},maxTicksLimit:28}},y:{stacked:false,ticks:{color:'#888',font:{family:'DM Mono',size:10},callback:v=>'$'+fmt(v/1000)+'k'}}}}});
+
+  // Full table
+  const T={eng15:0,eng20:0,extra5:0,mens:0,gross:0,com:0,aport:0,urb:0,adm:0,pub:0,leg:0,tax:0,fin:0,egr:0,neto:0};
+  $('cf-tbody').innerHTML=rows.map(r=>{
+    T.eng15+=r.eng15;T.eng20+=r.eng20;T.extra5+=r.extra5;T.mens+=r.mensualidades;
+    T.gross+=r.grossIngreso;T.com+=r.comPaid;T.aport+=r.aportMonth;
+    T.urb+=r.costsUrb;T.adm+=r.costsAdm;T.pub+=r.costsPub;
+    T.leg+=r.costsLeg;T.tax+=r.costsTax;T.fin+=r.costsFin;
+    T.egr+=r.totalEgresos;T.neto+=r.flujoNeto;
+    const paid=aportPayoffMonth&&r.m>=aportPayoffMonth&&r.aportMonth===0;
+    const hasData=r.grossIngreso>0||r.mensualidades>0;
+    const nf=r.flujoNeto;
+    return`<tr>
+      <td class="tl">${r.m}</td><td class="tmut">${r.lotsThisMonth||'—'}</td>
+      <td>${r.eng15>0?'$'+fmt(r.eng15,0):'—'}</td>
+      <td>${r.eng20>0?'$'+fmt(r.eng20,0):'—'}</td>
+      <td style="color:var(--positive);">${r.extra5>0?'$'+fmt(r.extra5,0):'—'}</td>
+      <td>${r.mensualidades>0?'$'+fmt(r.mensualidades,0):'—'}</td>
+      <td class="tgold">${hasData?'$'+fmt(r.grossIngreso,0):'—'}</td>
+      <td style="color:var(--negative);">${r.comPaid>0?'($'+fmt(r.comPaid,0)+')':'—'}</td>
+      <td class="tmut">${hasData?'$'+fmt(r.saldoTrasComisiones,0):'—'}</td>
+      <td style="color:${paid?'var(--positive)':'var(--negative)'};">${paid?'✓ LIQUIDADO':r.aportMonth>0?'($'+fmt(r.aportMonth,0)+')':'—'}</td>
+      <td class="tmut">${fmtMM(r.acumAport)}</td>
+      <td>${r.costsUrb>0?'($'+fmt(r.costsUrb,0)+')':'—'}</td>
+      <td>${r.costsAdm>0?'($'+fmt(r.costsAdm,0)+')':'—'}</td>
+      <td>${r.costsPub>0?'($'+fmt(r.costsPub,0)+')':'—'}</td>
+      <td>${r.costsLeg>0?'($'+fmt(r.costsLeg,0)+')':'—'}</td>
+      <td>${r.costsTax>0?'($'+fmt(r.costsTax,0)+')':'—'}</td>
+      <td>${r.costsFin>0?'($'+fmt(r.costsFin,0)+')':'—'}</td>
+      <td style="color:var(--negative);">${hasData?'($'+fmt(r.totalEgresos,0)+')':'—'}</td>
+      <td style="font-weight:600;color:${nf>=0?'var(--positive)':'var(--negative)'};">${hasData?'$'+fmt(nf,0):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  $('cf-tfoot').innerHTML=`<tr>
+    <td colspan="2" style="color:var(--gold);">TOTALES</td>
+    <td>$${fmt(T.eng15,0)}</td><td>$${fmt(T.eng20,0)}</td><td>$${fmt(T.extra5,0)}</td>
+    <td>$${fmt(T.mens,0)}</td><td class="tgold">$${fmt(T.gross,0)}</td>
+    <td style="color:var(--negative);">($${fmt(T.com,0)})</td><td></td>
+    <td style="color:var(--negative);">($${fmt(T.aport,0)})</td><td></td>
+    <td>($${fmt(T.urb,0)})</td><td>($${fmt(T.adm,0)})</td>
+    <td>($${fmt(T.pub,0)})</td><td>($${fmt(T.leg,0)})</td>
+    <td>($${fmt(T.tax,0)})</td><td>($${fmt(T.fin,0)})</td>
+    <td style="color:var(--negative);">($${fmt(T.egr,0)})</td>
+    <td style="font-weight:700;color:${T.neto>=0?'var(--positive)':'var(--negative)'};">$${fmt(T.neto,0)}</td>
+  </tr>`;
+}
+
+// ─── APORTACIÓN ──────────────────────────────────────────────────
+function updateAportacion(){
+  $('land-val-v').textContent='$'+fmt(+$('land-val').value);
+  $('urb-pct-v').textContent=$('urb-pct').value+'%';
+  $('aport-plazo-max-v').textContent=$('aport-plazo-max').value+'m';
+  const lv=+$('land-val').value,urbInv=+$('urb-inv').value,agreed=+$('aport-agreed').value;
+  const terrBruto=AREA_TOTAL*lv,terrPriv=TOTAL_AREA*lv,valTotal=terrBruto+urbInv;
+  $('aport-val-summary').innerHTML=`
+    <div class="g2" style="gap:9px;">
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Terreno total</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:var(--gold);">${fmtMM(terrBruto)}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Área privativa</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:var(--gold);">${fmtMM(terrPriv)}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Inversión urbaniz.</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:var(--sage-light);">${fmtMM(urbInv)}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Valor total aportado</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:var(--positive);">${fmtMM(valTotal)}</div></div>
+    </div>
+    <div style="margin-top:9px;padding:8px 11px;background:var(--highlight);border:1px solid var(--gold-light);border-radius:1px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);">
+      Monto acordado = <span style="color:var(--gold);">${valTotal>0?(agreed/valTotal*100).toFixed(1):0}%</span> del valor total aportado
+    </div>`;
+  const tc=+$('trust-cost').value,ec=+$('escritura-cost').value;
+  const totalFid=tc/12*Math.ceil(TOTAL_LOTS/(+$('lots-month').value||6))+(ec*TOTAL_LOTS);
+  $('aport-fidei-summary').innerHTML=`
+    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Costo total estimado del fideicomiso</div>
+    <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:12px;margin-bottom:2px;"><span style="color:var(--muted)">Comisión fiduciaria (vida proyecto)</span><span>${fmtMM(tc/12*Math.ceil(TOTAL_LOTS/(+$('lots-month').value||6)))}</span></div>
+    <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:12px;"><span style="color:var(--muted)">Escrituración 275 lotes</span><span>${fmtMM(ec*TOTAL_LOTS)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;margin-top:5px;padding-top:5px;border-top:1px solid var(--border);"><span>Total fideicomiso</span><span style="color:var(--gold);">${fmtMM(totalFid)}</span></div>`;
+
+  const pcts=[10,15,20,25,30,35];
+  const{rows}=buildCashflow();
+  $('aport-payoff-grid').innerHTML=pcts.map(pct=>{
+    let ac=0,po=null;
+    rows.forEach(r=>{if(!po){const c=r.mensualidades*(pct/100)+r.extra5*($('opt-5pct').checked?1:0);ac+=Math.min(c,agreed-ac);if(ac>=agreed)po=r.m;}});
+    const ok=po&&po<=48,med=po&&po<=72;
+    const cls=ok?'sage':med?'warn':'rust';
+    return`<div class="kpi ${cls}"><div class="kv">${pct}%</div><div class="kl">mensualidades</div><div style="font-family:'DM Mono',monospace;font-size:12px;margin-top:5px;">${po?'Mes '+po+' ('+( po/12).toFixed(1)+'a)':'> período'}</div></div>`;
+  }).join('');
+
+  $('aport-payoff-tbody').innerHTML=pcts.map(pct=>{
+    let ac=0,po=null,opSum=0,opCnt=0;
+    rows.forEach(r=>{if(!po){const c=r.mensualidades*(pct/100)+r.extra5*($('opt-5pct').checked?1:0);const contrib=Math.min(c,agreed-ac);ac+=contrib;opSum+=r.grossIngreso-contrib;opCnt++;if(ac>=agreed)po=r.m;}});
+    const rec=pct<=15?'Poco atractivo':pct<=25?'✓ Recomendado':pct<=35?'Viable':'Agresivo';
+    const cls=pct<=15?'bg-r':pct<=25?'bg-g':pct<=35?'bg-a':'bg-x';
+    return`<tr><td class="tgold">${pct}%</td><td class="tl">${po?'Mes '+po:'> período'}</td><td>${po?(po/12).toFixed(1)+' años':'—'}</td><td>$${fmt(agreed,0)}</td><td class="tpos">${opCnt?'$'+fmt(opSum/opCnt,0)+'/mes':'—'}</td><td><span class="badge ${cls}">${rec}</span></td></tr>`;
+  }).join('');
+}
+
+// ─── COSTS ───────────────────────────────────────────────────────
+function updateCosts(){
+  const ids=['urb','com','adm','pub','leg','tax','fin','fid'];
+  const labels={urb:'Urbanización',com:'Comisiones',adm:'Administrativo',pub:'Publicidad',leg:'Legal',tax:'IVA/ISR',fin:'Financiero',fid:'Fideicomiso'};
+  let total=0;
+  ids.forEach(id=>{const v=+$(`c-${id}`).value;$(`cv-${id}`).textContent=v+'%';total+=v;});
+  $('total-cost-pct').textContent=total.toFixed(1)+'%';
+  $('total-cost-pct').style.color=total>70?'var(--negative)':total>60?'#e8a000':'var(--positive)';
+
+  const{rows}=buildCashflow();
+  const totalIng=rows.reduce((s,r)=>s+r.grossIngreso,0);
+  const totalAport=rows.reduce((s,r)=>s+r.aportMonth,0);
+  const monthsWithIncome=rows.filter(r=>r.grossIngreso>0).length||1;
+  const costs={};ids.forEach(id=>{costs[id]=totalIng*(+$(`c-${id}`).value/100);});
+  const totalCost=Object.values(costs).reduce((a,b)=>a+b,0);
+  const util=totalIng-totalCost-totalAport;
+
+  $('cost-kpis').innerHTML=`
+    <div class="kpi"><div class="kv">${fmtMM(totalIng)}</div><div class="kl">Total ingresos cobrados</div></div>
+    <div class="kpi rust"><div class="kv">${fmtMM(totalCost)}</div><div class="kl">Total costos (${total.toFixed(0)}%)</div></div>
+    <div class="kpi sage"><div class="kv">${fmtMM(util)}</div><div class="kl">Utilidad neta</div><div class="ks">${totalIng>0?(util/totalIng*100).toFixed(1):0}% margen</div></div>`;
+
+  $('income-statement').innerHTML=`<table style="width:100%;font-size:12px;">
+    <thead><tr><th style="padding:6px 9px;background:var(--ink);color:var(--gold);">Concepto</th><th style="padding:6px 9px;background:var(--ink);color:var(--gold);text-align:right;">Total</th><th style="padding:6px 9px;background:var(--ink);color:var(--gold);text-align:right;">%</th><th style="padding:6px 9px;background:var(--ink);color:var(--gold);text-align:right;">Prom./mes</th></tr></thead>
+    <tbody>
+    <tr style="background:#f0ffe0;"><td style="padding:6px 9px;font-weight:600;color:var(--positive);">+ Ingresos cobrados</td><td style="padding:6px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--positive);">${fmtMM(totalIng)}</td><td style="padding:6px 9px;text-align:right;font-family:'DM Mono',monospace;">100%</td><td style="padding:6px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--muted);">${fmtMM(totalIng/monthsWithIncome)}</td></tr>
+    ${ids.map(id=>`<tr><td style="padding:5px 9px;color:var(--muted);">− ${labels[id]}</td><td style="padding:5px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--negative);">(${fmtMM(costs[id])})</td><td style="padding:5px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--muted);">${$(`c-${id}`).value}%</td><td style="padding:5px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--muted);">${fmtMM(costs[id]/monthsWithIncome)}</td></tr>`).join('')}
+    <tr style="background:#fff0e8;"><td style="padding:5px 9px;color:var(--rust);font-weight:600;">− Aportación terreno</td><td style="padding:5px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--rust);">(${fmtMM(totalAport)})</td><td style="padding:5px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--muted);">${totalIng>0?(totalAport/totalIng*100).toFixed(1):0}%</td><td style="padding:5px 9px;text-align:right;font-family:'DM Mono',monospace;color:var(--muted);">${fmtMM(totalAport/monthsWithIncome)}</td></tr>
+    <tr style="background:${util>=0?'#e8f5e9':'#ffebee'};border-top:2px solid ${util>=0?'var(--positive)':'var(--negative)'};">
+      <td style="padding:8px 9px;font-weight:700;color:${util>=0?'var(--positive)':'var(--negative)'};">= UTILIDAD NETA</td>
+      <td style="padding:8px 9px;text-align:right;font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:${util>=0?'var(--positive)':'var(--negative)'};">${fmtMM(util)}</td>
+      <td style="padding:8px 9px;text-align:right;font-family:'DM Mono',monospace;color:${util>=0?'var(--positive)':'var(--negative)'};">${totalIng>0?(util/totalIng*100).toFixed(1):0}%</td>
+      <td style="padding:8px 9px;text-align:right;font-family:'DM Mono',monospace;color:${util>=0?'var(--positive)':'var(--negative)'};">${fmtMM(util/monthsWithIncome)}</td>
+    </tr></tbody></table>`;
+
+  const cr=rows.slice(0,Math.min(84,rows.length));
+  if(costChart) costChart.destroy();
+  costChart=new Chart($('cost-chart').getContext('2d'),{
+    type:'bar',
+    data:{labels:cr.map(r=>'M'+r.m),datasets:[
+      {label:'Urbanización',data:cr.map(r=>r.grossIngreso*(+$('c-urb').value/100)),backgroundColor:'#c9a84c88',borderColor:'#c9a84c',borderWidth:1},
+      {label:'Comisiones',data:cr.map(r=>r.grossIngreso*(+$('c-com').value/100)),backgroundColor:'#3d5a4f88',borderColor:'#3d5a4f',borderWidth:1},
+      {label:'Administrativo',data:cr.map(r=>r.grossIngreso*(+$('c-adm').value/100)),backgroundColor:'#1a3a5c88',borderColor:'#1a3a5c',borderWidth:1},
+      {label:'IVA/ISR',data:cr.map(r=>r.grossIngreso*(+$('c-tax').value/100)),backgroundColor:'#8b3a2a88',borderColor:'#8b3a2a',borderWidth:1}
+    ]},
+    options:{responsive:true,plugins:{legend:{position:'top',labels:{color:'#333',font:{family:'Syne',size:11}}}},
+      scales:{x:{stacked:true,ticks:{color:'#888',font:{family:'DM Mono',size:10},maxTicksLimit:28}},y:{stacked:true,ticks:{color:'#888',font:{family:'DM Mono',size:10},callback:v=>'$'+fmt(v/1000)+'k'}}}}});
+}
+
+// ─── PROPOSAL ────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+// CONFIG — Se lee dinámicamente desde los inputs de la propuesta
+// ════════════════════════════════════════════════════════════════
+function getEscenarios(){
+  return [
+    { lotsPerMonth: +($('esc-pess-lpm')||{value:3}).value, name:'Pesimista',   color:'#e07060', headerBg:'#2a1010', borderColor:'#e07060', key:'pess' },
+    { lotsPerMonth: +($('esc-cons-lpm')||{value:6}).value, name:'Conservador', color:'#c9a84c', headerBg:'#201800', borderColor:'#c9a84c', key:'cons' },
+    { lotsPerMonth: +($('esc-opt-lpm')||{value:10}).value, name:'Optimista',   color:'#5a7a6e', headerBg:'#0e2418', borderColor:'#5a7a6e', key:'opt'  },
+  ];
+}
+
+function onEscChange(){
+  ['pess','cons','opt'].forEach(k=>{
+    const el=$('esc-'+k+'-lpm');
+    const vel=$('esc-'+k+'-lpm-v');
+    const info=$('esc-'+k+'-info');
+    if(!el) return;
+    const lpm=+el.value;
+    if(vel) vel.textContent=lpm;
+    if(info){const m=Math.ceil(275/lpm);info.textContent=`275 lotes → ~${m} meses de ventas (${(m/12).toFixed(1)} años)`;}
+  });
+  if($('panel-proposal').classList.contains('active')) updateProposal();
+}
+
+// ── Export / Save / Load moved to exportHTML() above ─────────────
+
+// ── Export HTML with baked-in parameters ─────────────────────────
+// Reads the current HTML source, replaces every value="..." for
+// every known input element with its live value, and downloads
+// the result as a standalone .html file.
+function exportHTML(){
+  const st=$('save-status');
+
+  // Full map of every parametrizable input: id → current value
+  const params={
+    // Escenarios propuesta
+    'esc-pess-lpm': $('esc-pess-lpm').value,
+    'esc-cons-lpm': $('esc-cons-lpm').value,
+    'esc-opt-lpm':  $('esc-opt-lpm').value,
+    // Velocidad / urbanización
+    'lots-month':   $('lots-month').value,
+    'urb-months':   $('urb-months').value,
+    // Precios
+    'price-base':   $('price-base').value,
+    'price-inc':    $('price-inc').value,
+    // Enganches
+    'eng-15':       $('eng-15').value,
+    // Diferimiento
+    'diff-pct':     $('diff-pct').value,
+    // Aportación (flujos)
+    'aport-pct':    $('aport-pct').value,
+    'aport-total':  $('aport-total').value,
+    // Egresos flujos
+    'cf-com':  $('cf-com').value,
+    'cf-urb':  $('cf-urb').value,
+    'cf-adm':  $('cf-adm').value,
+    'cf-pub':  $('cf-pub').value,
+    'cf-leg':  $('cf-leg').value,
+    'cf-tax':  $('cf-tax').value,
+    'cf-fin':  $('cf-fin').value,
+    // Aportación (panel 5)
+    'land-val':         $('land-val').value,
+    'urb-pct':          $('urb-pct').value,
+    'urb-inv':          $('urb-inv').value,
+    'trust-cost':       $('trust-cost').value,
+    'escritura-cost':   $('escritura-cost').value,
+    'aport-agreed':     $('aport-agreed').value,
+    'aport-plazo-max':  $('aport-plazo-max').value,
+    // Costos rentabilidad
+    'c-urb': $('c-urb').value,
+    'c-com': $('c-com').value,
+    'c-adm': $('c-adm').value,
+    'c-pub': $('c-pub').value,
+    'c-leg': $('c-leg').value,
+    'c-tax': $('c-tax').value,
+    'c-fin': $('c-fin').value,
+    'c-fid': $('c-fid').value,
+  };
+
+  // Distribution sliders (plazo dist)
+  const plazoIds=['contado','12','24','36','48','60','72','84'];
+  plazoIds.forEach(p=>{
+    const el=$('d-'+p);
+    if(el) params['d-'+p]=el.value;
+    const disc=$('disc-'+p);
+    if(disc) params['disc-'+p]=disc.value;
+  });
+
+  // Discount sliders (dynamically built, grab any disc-* that exist)
+  document.querySelectorAll('[id^="disc-"]').forEach(el=>{
+    params[el.id]=el.value;
+  });
+
+  // Get selects separately (they use selected, not value= in source)
+  const selects={
+    'base-plazo':         $('base-plazo').value,
+    'diff-pagos':         $('diff-pagos').value,
+    'diff-inicio':        $('diff-inicio').value,
+  };
+
+  // Checkboxes
+  const checks={
+    'opt-5pct': $('opt-5pct').checked,
+  };
+
+  // Clone the current HTML source
+  let html=document.documentElement.outerHTML;
+
+  // 1. Patch input value="..." for each known id
+  Object.entries(params).forEach(([id,val])=>{
+    // Match: id="THE_ID" ... value="ANYTHING" (same tag)
+    // Strategy: replace value attr inside the tag that has this id
+    // We use a regex that matches the opening tag containing the id
+    const escaped=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    // Replace value="..." on the same line/tag as the id
+    html=html.replace(
+      new RegExp(`(id="${escaped}"[^>]*?)value="[^"]*"`, 'g'),
+      `$1value="${val}"`
+    );
+    // Also handle value before id
+    html=html.replace(
+      new RegExp(`value="[^"]*"([^>]*?id="${escaped}"[^>]*?>)`, 'g'),
+      `value="${val}"$1`
+    );
+  });
+
+  // 2. Patch <select id="X"> — set selected on the right <option>
+  Object.entries(selects).forEach(([id,val])=>{
+    // Remove any existing 'selected' from options within this select block,
+    // then add 'selected' to the matching option value
+    const escaped=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    // Find the select block and patch it
+    html=html.replace(
+      new RegExp(`(<select[^>]*id="${escaped}"[^>]*>)(.*?)(</select>)`, 'gs'),
+      (match, open, inner, close)=>{
+        // Remove all selected attrs, then add to the right option
+        let patched=inner.replace(/\s*selected/g,'');
+        const valEsc=val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        patched=patched.replace(
+          new RegExp(`(<option[^>]*value="${valEsc}"[^>]*>)`),
+          (m)=>m.replace('<option','<option selected')
+        );
+        return open+patched+close;
+      }
+    );
+  });
+
+  // 3. Patch checkboxes — add/remove 'checked' attribute
+  Object.entries(checks).forEach(([id,isChecked])=>{
+    const escaped=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    html=html.replace(
+      new RegExp(`(<input[^>]*id="${escaped}"[^>]*?)(/?>)`, 'g'),
+      (match, before, end)=>{
+        let patched=before.replace(/\s*checked/g,'');
+        if(isChecked) patched+=' checked';
+        return patched+end;
+      }
+    );
+  });
+
+  // 4. Update the version comment timestamp
+  const ts=new Date().toLocaleString('es-MX',{dateStyle:'short',timeStyle:'short'});
+  html=html.replace(
+    /Versión \d+\.\d+/,
+    `Versión 3.x — Exportado el ${ts}`
+  );
+
+  // 5. Download
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const dateStr=new Date().toISOString().slice(0,10);
+  a.href=url;
+  a.download=`privanza_simulador_${dateStr}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  if(st){
+    st.textContent=`✓ Exportado: privanza_simulador_${dateStr}.html`;
+    st.style.color='var(--positive)';
+    setTimeout(()=>{if(st)st.textContent='';},6000);
+  }
+}
+const escCharts={};
+
+function buildScenarioCashflow(lpm){ return buildCashflow(lpm); }
+
+// ── Shared chart builder ───────────────────────────────────────────
+function buildEscChart(canvasId,rows,sc,aportPayoffMonth){
+  const ctx=document.getElementById(canvasId);
+  if(!ctx) return;
+  if(escCharts[canvasId]){try{escCharts[canvasId].destroy();}catch(e){}}
+  const payoffIdx=aportPayoffMonth?rows.findIndex(r=>r.m===aportPayoffMonth):-1;
+  const plugins={legend:{position:'top',labels:{color:'#333',font:{family:'Syne',size:10},boxWidth:12}}};
+  if(payoffIdx>=0) plugins.annotation={annotations:{payoff:{type:'line',xMin:payoffIdx,xMax:payoffIdx,borderColor:'#2d6a4f',borderWidth:2,borderDash:[6,3]}}};
+  escCharts[canvasId]=new Chart(ctx.getContext('2d'),{
+    type:'bar',
+    data:{labels:rows.map(r=>'M'+r.m),datasets:[
+      {label:'Enganches',    data:rows.map(r=>r.eng15+r.eng20),backgroundColor:'#c9a84c66',borderColor:'#c9a84c',borderWidth:1,stack:'s'},
+      {label:'Mensualidades',data:rows.map(r=>r.mensualidades), backgroundColor:sc.color+'66',borderColor:sc.color,borderWidth:1,stack:'s'},
+      {label:'→ A usted',   data:rows.map(r=>r.aportMonth),    type:'line',backgroundColor:'transparent',borderColor:sc.color,borderWidth:2.5,fill:false,tension:.35,pointRadius:0,pointHoverRadius:4},
+      {label:'Acum.',        data:rows.map(r=>r.acumAport),     type:'line',yAxisID:'y2',backgroundColor:'transparent',borderColor:'#5b8fd4',borderWidth:1.5,fill:false,tension:.35,pointRadius:0,borderDash:[4,3]},
+    ]},
+    options:{responsive:true,plugins,scales:{
+      x:{stacked:true,ticks:{color:'#888',font:{family:'DM Mono',size:9},maxTicksLimit:22}},
+      y:{stacked:true,ticks:{color:'#888',font:{family:'DM Mono',size:9},callback:v=>v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+fmt(v/1000,0)+'k'}},
+      y2:{position:'right',ticks:{color:'#5b8fd4',font:{family:'DM Mono',size:9},callback:v=>v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+fmt(v/1000,0)+'k'},grid:{drawOnChartArea:false}}
+    }}
+  });
+}
+
+function updateProposal(){
+  const aportPct  =+$('aport-pct').value/100;
+  const aportTotal=+($('aport-agreed').value||$('aport-total').value);
+  const plazoMax  =+($('aport-plazo-max').value||72);
+  const scenarios =getEscenarios();
+  const container =$('proposal-scenarios');
+  container.innerHTML='';
+
+  scenarios.forEach((sc,idx)=>{
+    const{rows,aportPayoffMonth,lastSaleMonth}=buildScenarioCashflow(sc.lotsPerMonth);
+    const payoffM    =aportPayoffMonth||plazoMax;
+    const payoffLabel='Mes '+payoffM+' ('+(payoffM/12).toFixed(1)+' años)';
+    const totalAport =rows.reduce((s,r)=>s+r.aportMonth,0);
+    const canvasId   ='esc-chart-'+idx;
+
+    const card=document.createElement('div');
+    card.style.cssText='border:2px solid '+sc.borderColor+';border-radius:4px;overflow:hidden;background:white;';
+
+    // Header
+    const hdr=document.createElement('div');
+    hdr.style.cssText='background:'+sc.headerBg+';padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid '+sc.borderColor+';';
+    hdr.innerHTML=`
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;letter-spacing:2px;font-weight:600;color:${sc.color};">${sc.name.toUpperCase()}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.45);margin-top:3px;">${sc.lotsPerMonth} lotes/mes · fin de ventas: mes ${lastSaleMonth}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.45);margin-bottom:3px;">Liquidación estimada</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:${sc.color};">${payoffLabel}</div>
+      </div>`;
+    card.appendChild(hdr);
+
+    const body=document.createElement('div');
+    body.style.cssText='padding:14px 16px;';
+
+    // Note
+    const note=document.createElement('div');
+    note.className='note mb12';
+    note.innerHTML='Los enganches se reciben al momento de la firma. Las mensualidades son pagos diferidos de cada cliente. <strong>→ A usted</strong>: porcentaje acordado dispersado automáticamente por el fiduciario. La tabla termina en el mes de liquidación.';
+    body.appendChild(note);
+
+    // Chart
+    const cw=document.createElement('div');
+    cw.style.cssText='background:white;border:1px solid var(--border);border-radius:2px;padding:10px;margin-bottom:12px;';
+    cw.innerHTML='<canvas id="'+canvasId+'" height="170"></canvas>';
+    body.appendChild(cw);
+
+    // Table — all rows (engine already stops at payoff)
+    const tblWrap=document.createElement('div');
+    tblWrap.style.cssText='overflow-x:auto;border:1px solid var(--border);border-radius:2px;';
+    tblWrap.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead><tr style="background:var(--ink);">
+        <th style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--gold);text-align:center;">MES</th>
+        <th style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:white;text-align:right;">ENGANCHES RECIBIDOS</th>
+        <th style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:white;text-align:right;">MENSUALIDADES RECIBIDAS</th>
+        <th style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:${sc.color};text-align:right;">→ A USTED ESTE MES</th>
+        <th style="padding:7px 10px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:#8ab8f0;text-align:right;">ACUMULADO RECIBIDO</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r,ri)=>{
+          const hasEng=r.eng15+r.eng20>0;
+          const isPaid=r.aportMonth===0&&r.acumAport>0;
+          const rowBg=isPaid?'#e8f5e9':ri%2===0?'#f8f5ef':'white';
+          return`<tr style="border-bottom:1px solid #ede8de;background:${rowBg};">
+            <td style="padding:6px 10px;font-family:'DM Mono',monospace;font-weight:${r.lotsThisMonth?'700':'400'};color:${r.lotsThisMonth?'var(--accent)':'var(--muted)'};text-align:center;">${r.m}${r.lotsThisMonth?' ●':''}</td>
+            <td style="padding:6px 10px;font-family:'DM Mono',monospace;color:var(--muted);text-align:right;">${hasEng?'$'+fmt(r.eng15+r.eng20,0):'—'}</td>
+            <td style="padding:6px 10px;font-family:'DM Mono',monospace;text-align:right;">${r.mensualidades>0?'$'+fmt(r.mensualidades,0):'—'}</td>
+            <td style="padding:6px 10px;font-family:'DM Mono',monospace;font-weight:600;text-align:right;color:${isPaid?'var(--positive)':r.aportMonth>0?sc.color:'var(--muted)'};">${isPaid?'✓ LIQUIDADO':r.aportMonth>0?'$'+fmt(r.aportMonth,0):'—'}</td>
+            <td style="padding:6px 10px;font-family:'DM Mono',monospace;color:var(--muted);text-align:right;">${r.acumAport>0?fmtMM(r.acumAport):'—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot><tr style="background:#f0ebe0;border-top:2px solid var(--border);">
+        <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-weight:600;font-size:11px;" colspan="2">TOTAL</td>
+        <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-weight:600;font-size:11px;text-align:right;">$${fmt(rows.reduce((s,r)=>s+r.mensualidades,0),0)}</td>
+        <td style="padding:7px 10px;font-family:'DM Mono',monospace;font-weight:600;font-size:11px;text-align:right;color:${sc.color};">$${fmt(totalAport,0)}</td>
+        <td></td>
+      </tfoot>
+    </table>`;
+    body.appendChild(tblWrap);
+    card.appendChild(body);
+    container.appendChild(card);
+
+    requestAnimationFrame(()=>buildEscChart(canvasId,rows,sc,aportPayoffMonth));
+  });
+
+  $('proposal-summary').innerHTML=`
+    <div style="font-family:'Cormorant Garamond',serif;font-size:16px;line-height:2;color:var(--ink);padding:6px 0;">
+      <p>Grupo Ureca de México propone la incorporación del fraccionamiento <strong>Privanza Conkal</strong> —275 lotes en régimen de condominio sobre 168,065 m²— a su cartera de proyectos en Yucatán mediante aportación al Fideicomiso Inmobiliario de Banco Invex.</p><br>
+      <p>El propietario aporta el terreno y recibe automáticamente un porcentaje de las mensualidades del proyecto hasta alcanzar el monto total acordado. Los tres escenarios garantizan la liquidación total dentro del plazo establecido contractualmente.</p><br>
+      <p>Grupo Ureca asume la operación completa: obra civil con maquinaria propia, comercialización, administración del fideicomiso y servicio postventa hasta escrituración. El propietario no asume ningún gasto ni riesgo operativo.</p>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// WORD EXPORT — genera la propuesta como .docx usando docx.js via CDN
+// ════════════════════════════════════════════════════════════════════
+let docxLoaded=false;
+
+function loadDocxLib(cb){
+  if(docxLoaded){cb();return;}
+  const st=$('save-status');
+  if(st){st.textContent='Cargando librería Word...';st.style.color='var(--accent)';}
+  const s=document.createElement('script');
+  s.src='https://unpkg.com/docx@8.5.0/build/index.js';
+  s.onload=()=>{docxLoaded=true;cb();};
+  s.onerror=()=>{if(st){st.textContent='Error cargando librería. Verifica conexión.';st.style.color='var(--negative)';}};
+  document.head.appendChild(s);
+}
+
+function exportWord(){
+  const btn=$('btn-word');
+  if(btn){btn.textContent='⏳ Generando Word...';btn.disabled=true;}
+  loadDocxLib(()=>{
+    try{buildWordDoc();}
+    catch(e){
+      console.error(e);
+      const st=$('save-status');
+      if(st){st.textContent='Error: '+e.message;st.style.color='var(--negative)';}
+      if(btn){btn.textContent='📄 Exportar Propuesta Word';btn.disabled=false;}
+    }
+  });
+}
+
+function buildWordDoc(){
+  const btn=$('btn-word');
+  const st=$('save-status');
+  const aportPct  =+$('aport-pct').value/100;
+  const aportTotal=+($('aport-agreed').value||$('aport-total').value);
+  const plazoMax  =+($('aport-plazo-max').value||72);
+  const scenarios =getEscenarios();
+
+  const{Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,
+    AlignmentType,BorderStyle,WidthType,ShadingType,VerticalAlign,
+    PageBreak,LevelFormat,Header,Footer,ImageRun}=docx;
+
+  // Colours
+  const GOLD='C9A84C',DARK='0F1117',SAGE='3D5A4F',RUST='8B3A2A',
+        ACCENT='1A3A5C',LGOLD='F5EDD4',LSAGE='E0EDE9',LACCENT='E0E8F2',
+        LGRAY='F5F2EC',WHITE='FFFFFF';
+  const BN={style:BorderStyle.NONE,size:0,color:WHITE};
+  const NO_B={top:BN,bottom:BN,left:BN,right:BN};
+  const BG={style:BorderStyle.SINGLE,size:8,color:GOLD};
+  const ALL_G={top:BG,bottom:BG,left:BG,right:BG};
+
+  // Helpers
+  const sp=(b=0,a=0)=>({before:b,after:a});
+  const fmtN=n=>Math.round(n).toLocaleString('es-MX');
+  const fmtMw=n=>'$'+fmtN(n);
+  const fmtMMw=n=>Math.abs(n)>=1e6?'$'+(n/1e6).toFixed(2)+'M':fmtMw(n);
+  const TR2=(text,sz=22,opts={})=>new TextRun({text,size:sz,font:'Arial',color:opts.color||DARK,bold:opts.bold||false,italics:opts.ital||false});
+  const divider=()=>new Paragraph({spacing:sp(120,120),border:{bottom:{style:BorderStyle.SINGLE,size:10,color:GOLD}}});
+  const secTitle=t=>new Paragraph({spacing:sp(240,100),children:[new TextRun({text:t,size:34,bold:true,font:'Arial',color:DARK,allCaps:true})]});
+  const secSub=t=>new Paragraph({spacing:sp(0,80),children:[new TextRun({text:t,size:22,font:'Arial',color:GOLD,italics:true})]});
+  const bodyP=(runs,sb=80,sa=100)=>new Paragraph({spacing:sp(sb,sa),alignment:AlignmentType.BOTH,children:runs});
+  const checkB=(bold,rest)=>new Paragraph({spacing:sp(60,60),children:[new TextRun({text:'\u2714 ',size:22,bold:true,font:'Arial',color:SAGE}),new TextRun({text:bold,size:22,bold:true,font:'Arial',color:DARK}),new TextRun({text:rest,size:22,font:'Arial',color:'333333'})]});
+  const checkS=t=>new Paragraph({spacing:sp(60,60),children:[new TextRun({text:'\u2714 ',size:22,bold:true,font:'Arial',color:SAGE}),new TextRun({text:t,size:22,font:'Arial',color:'333333'})]});
+
+  function kpiBar(items){
+    const W=9360,cw=Math.floor(W/items.length);
+    const cols=items.map((_,i)=>i<items.length-1?cw:W-cw*(items.length-1));
+    const mkRow=isVal=>new TableRow({children:items.map((it,ci)=>new TableCell({
+      width:{size:cols[ci],type:WidthType.DXA},borders:NO_B,
+      shading:{fill:it.bg||DARK,type:ShadingType.CLEAR},
+      margins:{top:isVal?140:40,bottom:isVal?50:140,left:130,right:130},
+      verticalAlign:VerticalAlign.CENTER,
+      children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun(
+        isVal?{text:it.value,size:38,bold:true,font:'Arial',color:it.vfg||GOLD}:{text:it.label.toUpperCase(),size:15,font:'Arial',color:it.fg||'888888'}
+      )]})]
+    }))});
+    return new Table({width:{size:W,type:WidthType.DXA},columnWidths:cols,rows:[mkRow(true),mkRow(false)]});
+  }
+
+  function guarTable(items){
+    const W=9360;
+    return new Table({width:{size:W,type:WidthType.DXA},columnWidths:[560,8800],
+      rows:items.map(it=>new TableRow({children:[
+        new TableCell({width:{size:560,type:WidthType.DXA},borders:NO_B,shading:{fill:LGOLD,type:ShadingType.CLEAR},margins:{top:100,bottom:100,left:100,right:100},verticalAlign:VerticalAlign.CENTER,
+          children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:it.icon,size:26,font:'Arial'})]})]
+        }),
+        new TableCell({width:{size:8800,type:WidthType.DXA},borders:{top:BN,bottom:{style:BorderStyle.SINGLE,size:2,color:'DDDDDD'},left:BN,right:BN},margins:{top:100,bottom:100,left:150,right:100},
+          children:[new Paragraph({spacing:sp(0,0),alignment:AlignmentType.BOTH,children:[new TextRun({text:it.title+' — ',size:22,bold:true,font:'Arial',color:DARK}),new TextRun({text:it.body,size:22,font:'Arial',color:'333333'})]})]
+        })
+      ]}))
+    });
+  }
+
+  function pillarTable(pillars){
+    const W=9360,cw=Math.floor(W/3),lastCw=W-cw*2,cws=[cw,cw,lastCw];
+    return new Table({width:{size:W,type:WidthType.DXA},columnWidths:cws,
+      rows:[new TableRow({children:pillars.map((p,i)=>new TableCell({
+        width:{size:cws[i],type:WidthType.DXA},borders:{top:{style:BorderStyle.SINGLE,size:12,color:p.color||GOLD},bottom:BN,left:BN,right:BN},
+        shading:{fill:p.bg||LGOLD,type:ShadingType.CLEAR},margins:{top:140,bottom:140,left:140,right:140},
+        children:[new Paragraph({spacing:sp(0,70),children:[new TextRun({text:p.icon+'  '+p.title,size:22,bold:true,font:'Arial',color:p.color||DARK})]}),new Paragraph({children:[new TextRun({text:p.body,size:20,font:'Arial',color:'444444'})]})]
+      }))})]}
+    );
+  }
+
+  function infoBox(runs,bg,leftColor){
+    return new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[9360],
+      rows:[new TableRow({children:[new TableCell({width:{size:9360,type:WidthType.DXA},borders:{top:BN,bottom:BN,left:{style:BorderStyle.SINGLE,size:18,color:leftColor||GOLD},right:BN},shading:{fill:bg||LGRAY,type:ShadingType.CLEAR},margins:{top:130,bottom:130,left:200,right:160},children:[new Paragraph({alignment:AlignmentType.BOTH,children:runs})]})]})]
+    });
+  }
+
+  // 5-column cashflow table, stops at payoff
+  function cfTable(rows,accentHex){
+    const W=9360,cols=[580,1980,2100,2100,2600];
+    const cleanHex=accentHex.replace('#','');
+    const hdrs=[{t:'MES',fg:GOLD},{t:'ENGANCHES',fg:WHITE},{t:'MENSUALIDADES',fg:WHITE},{t:'→ A USTED',fg:cleanHex},{t:'ACUMULADO',fg:WHITE}];
+    const hdrRow=new TableRow({children:hdrs.map((h,i)=>new TableCell({
+      width:{size:cols[i],type:WidthType.DXA},borders:NO_B,shading:{fill:DARK,type:ShadingType.CLEAR},margins:{top:85,bottom:85,left:85,right:85},
+      children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:h.t,size:17,bold:true,font:'Arial',color:h.fg})]})]
+    }))});
+    const dataRows=rows.map((r,ri)=>{
+      const isPaid=r.aportMonth===0&&r.acumAport>0;
+      const rowBg=isPaid?'E8F5E9':ri%2===0?LGRAY:WHITE;
+      const hasSale=r.lotsThisMonth>0;
+      const cells=[
+        {v:String(r.m)+(hasSale?' ●':''),fg:hasSale?ACCENT:'666666',bold:hasSale,al:AlignmentType.CENTER},
+        {v:r.eng15+r.eng20>0?fmtMw(r.eng15+r.eng20):'—',fg:'444444',al:AlignmentType.RIGHT},
+        {v:r.mensualidades>0?fmtMw(r.mensualidades):'—',fg:'444444',al:AlignmentType.RIGHT},
+        {v:isPaid?'\u2714 LIQUIDADO':r.aportMonth>0?fmtMw(r.aportMonth):'—',fg:isPaid?SAGE:r.aportMonth>0?cleanHex:'999999',bold:isPaid,al:AlignmentType.RIGHT},
+        {v:r.acumAport>0?fmtMMw(r.acumAport):'—',fg:'555555',al:AlignmentType.RIGHT},
+      ];
+      return new TableRow({children:cells.map((c,i)=>new TableCell({
+        width:{size:cols[i],type:WidthType.DXA},
+        borders:{top:BN,bottom:{style:BorderStyle.SINGLE,size:2,color:'DDDDDD'},left:BN,right:BN},
+        shading:{fill:rowBg,type:ShadingType.CLEAR},margins:{top:65,bottom:65,left:85,right:85},
+        children:[new Paragraph({alignment:c.al,children:[new TextRun({text:c.v,size:18,font:'Arial',color:c.fg,bold:c.bold||false})]})]
+      }))});
+    });
+    return new Table({width:{size:W,type:WidthType.DXA},columnWidths:cols,rows:[hdrRow,...dataRows]});
+  }
+
+  // Chart: render to offscreen canvas → PNG ArrayBuffer
+  function chartToPng(rows,sc,aportPayoffMonth){
+    return new Promise(resolve=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=1100;canvas.height=370;
+      canvas.style.cssText='position:fixed;left:-9999px;top:-9999px;';
+      document.body.appendChild(canvas);
+      const payoffIdx=aportPayoffMonth?rows.findIndex(r=>r.m===aportPayoffMonth):-1;
+      const plugins={legend:{position:'top',labels:{color:'#333',font:{size:11},boxWidth:14}}};
+      if(payoffIdx>=0) plugins.annotation={annotations:{payoff:{type:'line',xMin:payoffIdx,xMax:payoffIdx,borderColor:'#2d6a4f',borderWidth:2,borderDash:[6,3]}}};
+      const chart=new Chart(canvas.getContext('2d'),{
+        type:'bar',
+        data:{labels:rows.map(r=>'M'+r.m),datasets:[
+          {label:'Enganches',    data:rows.map(r=>r.eng15+r.eng20),backgroundColor:'#c9a84c88',borderColor:'#c9a84c',borderWidth:1,stack:'s'},
+          {label:'Mensualidades',data:rows.map(r=>r.mensualidades), backgroundColor:sc.color+'88',borderColor:sc.color,borderWidth:1,stack:'s'},
+          {label:'→ A usted',   data:rows.map(r=>r.aportMonth),    type:'line',backgroundColor:'transparent',borderColor:sc.color,borderWidth:3,fill:false,tension:.35,pointRadius:0},
+          {label:'Acum.',        data:rows.map(r=>r.acumAport),     type:'line',yAxisID:'y2',backgroundColor:'transparent',borderColor:'#5b8fd4',borderWidth:2,fill:false,tension:.35,pointRadius:0,borderDash:[5,3]},
+        ]},
+        options:{responsive:false,animation:false,plugins,
+          scales:{
+            x:{stacked:true,ticks:{font:{size:10},maxTicksLimit:22}},
+            y:{stacked:true,ticks:{font:{size:10},callback:v=>v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'k'}},
+            y2:{position:'right',ticks:{font:{size:10},callback:v=>v>=1e6?'$'+(v/1e6).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'k'},grid:{drawOnChartArea:false}}
+          }}
+      });
+      setTimeout(()=>{
+        const dataUrl=canvas.toDataURL('image/png');
+        chart.destroy();document.body.removeChild(canvas);
+        const base64=dataUrl.split(',')[1];
+        const binary=atob(base64);
+        const bytes=new Uint8Array(binary.length);
+        for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+        resolve(bytes.buffer);
+      },400);
+    });
+  }
+
+  // Build async (charts need setTimeout)
+  async function buildAndDownload(){
+    const children=[];
+    const push=(...items)=>items.forEach(i=>children.push(i));
+
+    // ── Portada ──────────────────────────────────────────────────
+    push(new Paragraph({spacing:sp(0,200)}));
+    push(new Paragraph({spacing:sp(0,180),border:{left:{style:BorderStyle.SINGLE,size:48,color:GOLD,space:16}},indent:{left:400},children:[new TextRun({text:'PRIVANZA CONKAL',size:72,bold:true,font:'Arial',color:GOLD}),new TextRun({break:1}),new TextRun({text:'Propuesta de Aportación de Terreno al Fideicomiso Inmobiliario',size:26,font:'Arial',color:'777777',italics:true})]}));
+    push(divider());
+    push(bodyP([TR2('Grupo Ureca de México S.A. de C.V.  ·  Conkal, Yucatán  ·  ',20,{color:'888888'}),TR2('Confidencial',20,{color:RUST,bold:true})],60,180));
+
+    // Dark commitment box at top
+    push(new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[9360],rows:[new TableRow({children:[new TableCell({width:{size:9360,type:WidthType.DXA},borders:ALL_G,shading:{fill:DARK,type:ShadingType.CLEAR},margins:{top:220,bottom:220,left:280,right:280},children:[
+      new Paragraph({alignment:AlignmentType.CENTER,spacing:sp(0,90),children:[new TextRun({text:'LA PROPUESTA',size:20,font:'Arial',color:GOLD,allCaps:true,characterSpacing:60})]}),
+      new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'Usted aporta el terreno. Grupo Ureca opera el proyecto.',size:24,font:'Arial',color:'CCCCCC',italics:true}),new TextRun({break:1}),new TextRun({text:'El fideicomiso de Banco Invex le garantiza el siguiente retorno:',size:24,font:'Arial',color:'CCCCCC',italics:true})]})
+    ]})]})]}))
+    );
+    push(kpiBar([
+      {label:'Monto total garantizado para usted',value:fmtMMw(aportTotal),bg:DARK,vfg:GOLD,fg:'888888'},
+      {label:'% de mensualidades destinado a usted',value:Math.round(aportPct*100)+'%',bg:ACCENT,vfg:'8AB8F0',fg:'888888'},
+    ]));
+    push(new Paragraph({spacing:sp(0,100)}));
+    push(infoBox([TR2('Nota: ',22,{bold:true}),TR2('Los enganches se destinan íntegramente a comisiones de venta. ',22,{color:'444444'}),TR2('Su porcentaje corresponde exclusivamente a las mensualidades',22,{bold:true}),TR2(' que los compradores pagan mes a mes.',22,{color:'444444'})],undefined,GOLD));
+    push(new Paragraph({spacing:sp(0,80)}));
+    push(kpiBar([
+      {label:'Lotes en régimen de condominio',value:'275',bg:DARK,vfg:GOLD,fg:'888888'},
+      {label:'Superficie total del predio',value:'168,065 m²',bg:ACCENT,vfg:'8AB8F0',fg:'888888'},
+      {label:'Área privativa vendible',value:'95,346 m²',bg:SAGE,vfg:'A8D5C2',fg:'888888'},
+      {label:'Urbanización ya ejecutada',value:'15%',bg:RUST,vfg:'F0A898',fg:'888888'},
+    ]));
+    push(new Paragraph({spacing:sp(0,80)}));
+
+    // ── Quiénes somos ────────────────────────────────────────────
+    push(secTitle('Grupo Ureca de México — Más de 20 años de experiencia'));
+    push(secSub('La empresa con la infraestructura, la gente y los procesos para hacer realidad este proyecto.'));
+    push(bodyP([TR2('Somos una empresa de desarrollo inmobiliario con más de dos décadas de trayectoria. Operamos con '),TR2('infraestructura 100% propia',22,{bold:true}),TR2(': maquinaria pesada en Yucatán, equipo de obra completo y '),TR2('cero subcontratación externa',22,{bold:true}),TR2('. Cada proyecto lo construimos con nuestras propias manos y equipo.')],80,100));
+    push(bodyP([TR2('Contamos con un '),TR2('departamento y plataforma de cobranza propios',22,{bold:true}),TR2(', garantizando captación puntual de los flujos mensuales — constante, rastreable y dispersado con precisión al fideicomiso mes a mes, sin depender de terceros.')],0,160));
+    push(pillarTable([
+      {icon:'\u{1F3D7}',title:'Equipo 100% propio',color:GOLD,bg:LGOLD,body:'Arquitectos, ingenieros, albañiles, diseñadores, abogados, contadores, despacho fiscal, personal administrativo y departamento de cobranza. Sin subcontratación.'},
+      {icon:'\u{1F3E2}',title:'Presencia nacional e internacional',color:ACCENT,bg:LACCENT,body:'Oficinas en Mérida, Querétaro y Ciudad de México. LLC con cuenta bancaria en EE.UU. Fuerza de ventas de más de 80 personas activas en diversos estados.'},
+      {icon:'\u{1F4F1}',title:'Plataforma tecnológica activa',color:SAGE,bg:LSAGE,body:'CLABEs únicas por cliente, CRM, cotizador, campañas digitales, generación de leads y gestión integral de cobranza operando hoy.'},
+    ]));
+    push(new Paragraph({spacing:sp(0,120)}));
+    push(bodyP([TR2('Adicionalmente:',22,{bold:true})],80,60));
+    push(checkB('Plataforma legal, fiscal y notarial',' lista para constituir el fideicomiso con Banco Invex, formalizar contratos e iniciar ventas de manera inmediata.'));
+    push(checkB('Club de playa en Dzilam de Bravo',' con cabañas a pie de playa — viable como amenidad de mantenimiento para los colonos de Privanza.'));
+    push(checkB('Patrocinadores oficiales de Conspiradores de Querétaro',', equipo de Primera División de Beisbol — reflejo de nuestro compromiso institucional con las comunidades donde operamos.'));
+    push(new Paragraph({spacing:sp(0,100)}));
+
+    // ── El proyecto ──────────────────────────────────────────────
+    push(divider());
+    push(secTitle('El Proyecto — Privanza Conkal puede arrancar hoy'));
+    push(secSub('Sin tramitología pendiente. Sin permisos por gestionar. Sin esperas.'));
+    push(bodyP([TR2('El fraccionamiento cuenta con '),TR2('todos los elementos para iniciar la preventa de manera inmediata',22,{bold:true}),TR2('. No existe ningún trámite pendiente ni gestión que retrase el arranque. El trabajo previo ya está hecho y los expedientes están en regla.')],80,120));
+    push(checkS('Régimen de condominio constituido — 275 lotes con indivisos individuales calculados y validados.'));
+    push(checkS('División catastral completada ante INSEJUPY. Expediente en regla.'));
+    push(checkS('15% de urbanización ejecutada: barda perimetral, acceso principal, calles internas y áreas verdes.'));
+    push(checkS('Sin ninguna tramitología pendiente que retrase el arranque comercial.'));
+    push(new Paragraph({spacing:sp(0,80)}));
+    push(new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[9360],rows:[new TableRow({children:[new TableCell({width:{size:9360,type:WidthType.DXA},borders:{top:BG,bottom:BG,left:BN,right:BN},shading:{fill:LGOLD,type:ShadingType.CLEAR},margins:{top:160,bottom:160,left:200,right:200},children:[new Paragraph({alignment:AlignmentType.BOTH,children:[TR2('La inversión ya realizada representa una ventaja competitiva real: '),TR2('Grupo Ureca puede comenzar a vender en semanas, no en meses.',22,{bold:true})]})]})]})]}));
+    push(new Paragraph({spacing:sp(0,80)}));
+
+    // ── Modelo de aportación ─────────────────────────────────────
+    push(divider());
+    push(secTitle('El Modelo de Aportación — Cómo funciona'));
+    push(secSub('Usted aporta. Nosotros operamos. El fideicomiso de Banco Invex distribuye.'));
+    push(bodyP([TR2('El propietario aporta el terreno a un '),TR2('Fideicomiso Inmobiliario instrumentado con Banco Invex',22,{bold:true}),TR2('. El fideicomiso distribuye automáticamente un porcentaje de las '),TR2('mensualidades cobradas',22,{bold:true}),TR2(' directamente a la cuenta del beneficiario — mes a mes, sin intermediarios, sin aprobaciones discrecionales.')],80,120));
+    push(new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[9360],rows:[new TableRow({children:[new TableCell({width:{size:9360,type:WidthType.DXA},borders:ALL_G,shading:{fill:DARK,type:ShadingType.CLEAR},margins:{top:160,bottom:160,left:220,right:220},children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'En cualquiera de los tres escenarios — pesimista, conservador u optimista —',size:22,font:'Arial',color:'CCCCCC'}),new TextRun({break:1}),new TextRun({text:'el flujo mensual y el monto total quedan garantizados dentro del fideicomiso de Banco Invex',size:22,bold:true,font:'Arial',color:WHITE}),new TextRun({break:1}),new TextRun({text:'con un plazo máximo de liquidación establecido contractualmente.',size:22,font:'Arial',color:GOLD})]})]})]})]}));
+    push(new Paragraph({spacing:sp(0,160)}));
+    push(bodyP([TR2('Garantías que protegen al propietario:',24,{bold:true})],0,80));
+    push(guarTable([
+      {icon:'\uD83D\uDD12',title:'Patrimonio inembargable',body:'El terreno ingresa al fideicomiso de Banco Invex como patrimonio autónomo. No puede ser afectado, embargado ni comprometido por ninguna obligación de Grupo Ureca.'},
+      {icon:'\uD83D\uDCCA',title:'Reportes mensuales certificados',body:'Banco Invex emite estados de cuenta verificables con el detalle de cada venta, enganche y mensualidad cobrada. El beneficiario tiene acceso directo en todo momento.'},
+      {icon:'\uD83D\uDCB3',title:'Dispersión automática y garantizada',body:'El porcentaje acordado se transfiere mes a mes directamente a la cuenta del beneficiario. Sin gestiones adicionales, sin retrasos discrecionales.'},
+      {icon:'\uD83C\uDFE6',title:'Cuenta bancaria exclusiva del proyecto',body:'Se designa una cuenta bancaria propia e independiente exclusivamente para este proyecto, completamente separada del patrimonio de Grupo Ureca.'},
+      {icon:'\uD83D\uDCCB',title:'Plazo máximo comprometido contractualmente',body:'El contrato de fideicomiso establece el monto total a pagar y el plazo máximo de liquidación, con cláusulas de cumplimiento obligatorio.'},
+      {icon:'\u2696\uFE0F',title:'Arbitraje comercial',body:'Mecanismo de resolución de controversias con árbitro neutral de la industria, establecido desde el inicio del contrato de fideicomiso.'},
+    ]));
+    push(new Paragraph({spacing:sp(0,120)}));
+
+    // ── Escenarios ───────────────────────────────────────────────
+    push(new Paragraph({children:[new PageBreak()]}));
+    push(divider());
+    push(secTitle('Proyección de Ingresos — Tres Escenarios'));
+    push(secSub('Pesimista · Conservador · Optimista · Flujo mensual para el aportante'));
+    push(bodyP([TR2('Los tres escenarios proyectan los flujos reales bajo distintas velocidades de venta. '),TR2('En todos los casos el monto total queda garantizado contractualmente',22,{bold:true}),TR2(' dentro del fideicomiso de Banco Invex. La tabla termina en el mes de liquidación.')],80,160));
+
+    for(const sc of scenarios){
+      const{rows,aportPayoffMonth,lastSaleMonth}=buildScenarioCashflow(sc.lotsPerMonth);
+      const payoffM =aportPayoffMonth||plazoMax;
+      const payoffLabel='Mes '+payoffM+' ('+(payoffM/12).toFixed(1)+' años)';
+
+      push(new Paragraph({spacing:sp(0,120)}));
+
+      // Scenario banner
+      push(new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[5400,3960],rows:[new TableRow({children:[
+        new TableCell({width:{size:5400,type:WidthType.DXA},borders:NO_B,shading:{fill:sc.headerBg.replace('#',''),type:ShadingType.CLEAR},margins:{top:200,bottom:120,left:240,right:120},children:[
+          new Paragraph({children:[new TextRun({text:sc.name.toUpperCase(),size:52,bold:true,font:'Arial',color:sc.color.replace('#','')})] }),
+          new Paragraph({spacing:sp(60,0),children:[new TextRun({text:sc.lotsPerMonth+' lotes/mes  ·  fin de ventas: mes '+lastSaleMonth,size:19,font:'Arial',color:'AAAAAA'})]})
+        ]}),
+        new TableCell({width:{size:3960,type:WidthType.DXA},borders:NO_B,shading:{fill:sc.headerBg.replace('#',''),type:ShadingType.CLEAR},margins:{top:140,bottom:120,left:120,right:240},verticalAlign:VerticalAlign.CENTER,children:[
+          new Paragraph({alignment:AlignmentType.RIGHT,children:[new TextRun({text:'Liquidación estimada',size:17,font:'Arial',color:'AAAAAA'})]}),
+          new Paragraph({alignment:AlignmentType.RIGHT,children:[new TextRun({text:payoffLabel,size:34,bold:true,font:'Arial',color:sc.color.replace('#','')})]}),
+        ]}),
+      ]})]})
+      );
+      push(new Paragraph({spacing:sp(0,100)}));
+
+      // Chart as embedded PNG
+      try{
+        const imgBuf=await chartToPng(rows,sc,aportPayoffMonth);
+        push(new Paragraph({spacing:sp(0,100),children:[new ImageRun({data:imgBuf,transformation:{width:620,height:230},type:'png'})]}));
+      }catch(e){console.error('Chart PNG:',e);}
+
+      push(cfTable(rows,sc.color));
+      push(new Paragraph({spacing:sp(0,60)}));
+      push(bodyP([TR2('\u25CF Mes con ventas activas  ·  ',18,{color:ACCENT}),TR2('\u2714 Fila verde = aportación liquidada',18,{color:SAGE})],0,120));
+    }
+
+    // ── Pack & download ──────────────────────────────────────────
+    const doc=new Document({
+      numbering:{config:[{reference:'bullets',levels:[{level:0,format:LevelFormat.BULLET,text:'\u2022',alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:560,hanging:280}}}}]}]},
+      styles:{default:{document:{run:{font:'Arial',size:22,color:DARK}}}},
+      sections:[{
+        properties:{page:{size:{width:12240,height:15840},margin:{top:1080,right:1080,bottom:1080,left:1080}}},
+        headers:{default:new Header({children:[new Paragraph({spacing:sp(0,0),border:{bottom:{style:BorderStyle.SINGLE,size:6,color:GOLD}},children:[new TextRun({text:'PRIVANZA CONKAL  ·  Propuesta de Aportación  ·  ',size:18,font:'Arial',color:'999999'}),new TextRun({text:'Grupo Ureca de México  ·  Confidencial',size:18,font:'Arial',color:RUST})]})]})},
+        footers:{default:new Footer({children:[new Paragraph({spacing:sp(0,0),border:{top:{style:BorderStyle.SINGLE,size:6,color:GOLD}},alignment:AlignmentType.RIGHT,children:[new TextRun({text:'Grupo Ureca de México  ·  Privanza Conkal  ·  Confidencial',size:18,font:'Arial',color:'999999'})]})]})},
+        children
+      }]
+    });
+
+    const buf=await Packer.toBuffer(doc);
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const dateStr=new Date().toISOString().slice(0,10);
+    a.href=url;a.download='propuesta_privanza_'+dateStr+'.docx';a.click();
+    URL.revokeObjectURL(url);
+
+    if(btn){btn.textContent='📄 Exportar Propuesta Word';btn.disabled=false;}
+    if(st){st.textContent='✓ Word descargado: propuesta_privanza_'+dateStr+'.docx';st.style.color='var(--positive)';setTimeout(()=>{if(st)st.textContent='';},6000);}
+  }
+
+  buildAndDownload();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+initInventory();
+rebuildDiscounts();
+updatePricing();
+initScenario();
+syncDist();
+syncEng();
+updateScenario();
+onEscChange();
+
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{updateTimeline();},300);
+});
+</script>
+</body>
+</html>
